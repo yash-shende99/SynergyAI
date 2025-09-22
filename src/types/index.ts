@@ -1,0 +1,384 @@
+// types/index.ts
+export interface NavItem {
+  id: string;
+  name: string;
+  href: string;
+  icon: React.ElementType; // Will hold the Lucide icon component
+}
+
+export interface NavConfig {
+  [key: string]: {
+    title: string;
+    subFeatures: NavItem[];
+  };
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface Conversation {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  lastUpdated: string;
+}
+
+
+export type DocumentFolderKey = 'Financials' | 'Legal & Compliance' | 'Human Resources' | 'Intellectual Property' | string;
+
+export interface Document {
+  id: string;
+  name: string;
+  uploader: string;
+  date: string;
+  file_path: string;
+  category: string;
+  analysis_status: string;
+  uploaded_by_user_id: string;
+  project_id: string;
+}
+
+export interface Category {
+  name: string;
+  document_count: number;
+}
+
+export type UploadStatus = 'Success' | 'Processing' | 'Failed' | 'Pending' | 'Error';
+
+export interface UploadedFile {
+  name: string;
+  status: UploadStatus;
+  category: string;
+  uploaded_at?: string;
+  file_path?: string;
+  id?: string;
+}
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  avatarUrl: string; // Will be a placeholder for now
+}
+
+export interface AISummary {
+  narrative: string;
+  dealCount: number;
+  distribution: {
+    bySector: { name: string; value: number }[];
+    byStatus: { name: string; value: number }[];
+  };
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  status: DealStatus;
+  targetCompany: Company;
+  team: TeamMember[];
+}
+
+export interface StrategicSearchResult {
+  company: Company;
+  fitScore: number;
+  rationale: string;
+}
+
+export interface CompanyMapProfile {
+  cin: string;
+  name: string;
+  logoUrl: string;
+  sector: string;
+  revenue: number;
+  growth: number;
+  employees: number;
+  ebitdaMargin: number;
+  roe: number; // Added for filtering
+}
+
+export interface Watchlist {
+  id: string;
+  name: string;
+  created_at: string;
+  user_id?: string;
+  watchlist_companies?: Array<{ count: number }>;
+  company_count?: number; // Alternative approach
+}
+export interface WatchlistWithCount extends Watchlist {
+  company_count: number;
+  watchlist_companies?: Array<{ count: number }>;
+}
+
+// --- NEW TYPE for our filter state ---
+export interface MarketMapFilters {
+  sector: string;
+  hqState: string;
+  revenueMin: number;
+  growthMin: number;
+  ebitdaMarginMin: number;
+  roeMin: number;
+}
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl: string;
+  role: 'Admin' | 'Editor' | 'Viewer';
+}
+
+export type NotificationType = 'Deal Update' | 'Risk Alert' | 'Comment' | 'System';
+
+export interface Notification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  timestamp: string;
+  isRead: boolean;
+  priority?: 'Critical' | 'High'; // Optional for special highlighting
+}
+
+export interface BriefingCard {
+  id: 'recommendation' | 'valuation' | 'synergy' | 'risk';
+  title: string;
+  value: string;
+  subValue: string;
+  color: string; 
+  aiInsight: string;
+}
+
+export interface ExportOptions {
+  format: 'PDF' | 'PowerPoint' | 'Word';
+  includeBranding: boolean;
+  includeCharts: boolean;
+}
+
+export type RowType = 'INPUT' | 'FORMULA' | 'PERCENTAGE';
+export interface ModelRow {
+  id: string; // A unique ID for calculations (e.g., 'rev', 'cogs')
+  label: string;
+  type: RowType;
+  values: (number | null)[];
+}
+
+export type TemplateCategory = 'Financial' | 'Legal' | 'Risk' | 'Strategic' | 'Investment Memo';
+
+export interface ReportTemplate {
+  id: string;
+  name: string;
+  category: TemplateCategory;
+  description: string;
+  createdBy: 'System' | 'Team' | 'Yash Shende'; // Example creators
+  sections: string[]; // For the preview modal
+}
+
+export type DraftStatus = 'Draft' | 'Review' | 'Final';
+
+export interface Draft {
+  id: string;
+  title: string;
+  createdBy: {
+    name: string;
+    avatarUrl: string;
+  };
+  lastModified: string;
+  status: DraftStatus;
+}
+
+
+export interface SynergyProfile {
+  id: string;
+  name: string; // e.g., "Reliance + Delhivery Analysis"
+  acquirer: Company;
+  target: Company;
+  summary: string; // e.g., "$50M Cost, $70M Revenue"
+  variables: {
+    costReduction: number;
+    revenueGrowth: number;
+    integrationCosts: number;
+    timeToRealize: number;
+  }
+}
+
+export type DistributionType = 'Normal' | 'Lognormal' | 'Uniform';
+
+export interface MonteCarloSimulation {
+  id: string;
+  name: string;
+  projectName: string;
+  summary: string;
+  variables: {
+    revenueGrowth: number;
+    ebitdaMargin: number;
+    costOfCapital: number;
+    iterations: number;
+    distribution: DistributionType;
+  }
+}
+
+export interface Scenario {
+  id: string;
+  name: string;
+  projectName: string;
+  summary: string;
+  variables: {
+    revenueChange: number;
+    cogsChange: number;
+    taxRate: number;
+    discountRate: number;
+  }
+}
+
+export type AlertPriority = 'Critical' | 'High' | 'Medium' | 'Low';
+
+export interface Alert {
+  id: string;
+  priority: AlertPriority;
+  title: string;
+  type: 'Financial' | 'Legal' | 'Market' | 'Reputational';
+  source: string;
+  timestamp: string;
+  description: string;
+  aiInsight: string;
+}
+
+
+
+export type SynergyCategory = 'Cost' | 'Revenue';
+
+export interface SynergyItem {
+  name: string;
+  value: number; // in $M
+  confidence: 'High' | 'Medium' | 'Low';
+}
+
+export type DealStatus = 'Sourcing' | 'Diligence' | 'Negotiation' | 'Completed';
+
+export interface Deal {
+  id: string;
+  name: string;
+  status: DealStatus;
+  aiSummary: string;
+  keyRisks: { id: string; text: string }[];
+  nextActions: { id: string; text: string }[];
+}
+
+export interface Message {
+  from: 'user' | 'ai';
+  text: string;
+}
+
+export interface Company {
+  id: string;
+  name: string;
+  logoUrl: string;
+  sector: string;
+  location: string;
+  revenue: number; // in Cr INR
+  employees: number;
+}
+
+export type RiskCategory = 'Financial' | 'Legal' | 'Operational' | 'Reputational' | 'Cultural';
+
+export interface RiskItem {
+  category: RiskCategory;
+  score: number;
+  insights: string[];
+}
+
+export interface TargetCompanyRiskProfile {
+  id: string;
+  name: string;
+  overallScore: number;
+  topRisks: string[];
+  detailedBreakdown: RiskItem[];
+}
+
+export type FeatureKey = 
+  | 'dashboard' 
+  | 'sourcing' 
+  | 'vdr' 
+  | 'chat' 
+  | 'analytics' 
+  | 'valuation' 
+  | 'reports'
+  | 'analytics' | 'valuation' | 'reports' | 'notifications' | 'settings';
+
+interface SubFeature {
+  name: string;
+  href: string;
+}
+
+
+
+export const featureConfig: Record<FeatureKey, { title: string; subFeatures: SubFeature[] }> = {
+  dashboard: { title: 'Mission Control', subFeatures: [
+      { name: 'Pipeline', href: '/dashboard' },
+      { name: 'AI Summary', href: '/dashboard/summary' },
+      { name: 'Key Risks', href: '/dashboard/risks' },
+      { name: 'Next Actions', href: '/dashboard/actions' },
+    ]
+  },
+  sourcing: { title: 'Deal Sourcing', subFeatures: [
+      { name: 'Search', href: '/dashboard/sourcing' },
+      { name: 'Filters', href: '/dashboard/sourcing/filters' },
+      { name: 'Watchlists', href: '/dashboard/sourcing/watchlist' },
+      { name: 'Market Maps', href: '/dashboard/sourcing/maps' },
+      { name: 'Strategic Engine', href: '/dashboard/sourcing/engine' },
+    ]
+  },
+  vdr: { title: 'Virtual Data Room', subFeatures: [
+      { name: 'Upload', href: '/dashboard/vdr' },
+      { name: 'Categories', href: '/dashboard/vdr/categories' },
+      { name: 'Search', href: '/dashboard/vdr/search' },
+      { name: 'Annotations', href: '/dashboard/vdr/annotations' },
+      { name: 'Q&A', href: '/dashboard/vdr/qa' },
+    ]
+  },
+  chat: { title: 'AI Co-Pilot', subFeatures: [
+      { name: 'Ask', href: '/dashboard/chat' },
+      { name: 'History', href: '/dashboard/chat/history' },
+      { name: 'Suggested Questions', href: '/dashboard/chat/suggestions' },
+      { name: 'Knowledge Retrieval', href: '/dashboard/chat/knowledge' },
+    ]
+  },
+  analytics: { title: 'Analytics & Risk', subFeatures: [
+      { name: 'Risk Score', href: '/dashboard/analytics' },
+      { name: 'Synergy Score', href: '/dashboard/analytics/synergy' },
+      { name: 'Knowledge Graph', href: '/dashboard/analytics/graph' },
+      { name: 'Alerts', href: '/dashboard/analytics/alerts' },
+    ]
+  },
+  valuation: { title: 'Valuation & Models', subFeatures: [
+      { name: 'Templates', href: '/dashboard/valuation' },
+      { name: 'Live Models', href: '/dashboard/valuation/models' },
+      { name: 'Scenarios', href: '/dashboard/valuation/scenarios' },
+      { name: 'Monte Carlo', href: '/dashboard/valuation/mc' },
+      { name: 'Synergies', href: '/dashboard/valuation/synergies' },
+    ]
+  },
+  reports: { title: 'Reports / Memos', subFeatures: [
+      { name: 'Drafts', href: '/dashboard/reports' },
+      { name: 'Templates', href: '/dashboard/reports/templates' },
+      { name: 'Export', href: '/dashboard/reports/export' },
+      { name: 'One-Click Memo', href: '/dashboard/reports/generate' },
+    ]
+  },
+  notifications: { title: 'Notifications', subFeatures: [
+      { name: 'All', href: '/dashboard/notifications' },
+      { name: 'Deal Updates', href: '/dashboard/notifications/deals' },
+      { name: 'Risk Alerts', href: '/dashboard/notifications/risks' },
+      { name: 'Comments', href: '/dashboard/notifications/comments' },
+      { name: 'System', href: '/dashboard/notifications/system' },
+    ]
+  },
+  settings: { title: 'Settings & Preferences', subFeatures: [
+      { name: 'Profile', href: '/dashboard/settings' },
+      { name: 'Security', href: '/dashboard/settings/security' },
+      { name: 'Appearance', href: '/dashboard/settings/appearance' },
+      { name: 'Team', href: '/dashboard/settings/team' },
+      { name: 'Integrations', href: '/dashboard/settings/integrations' },
+    ]
+  },
+};

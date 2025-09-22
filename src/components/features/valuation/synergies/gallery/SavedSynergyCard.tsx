@@ -1,0 +1,30 @@
+import { FC } from 'react';
+import { SynergyProfile } from '../../../../../types';
+import Link from 'next/link';
+import { Copy, Trash2 } from 'lucide-react';
+
+interface SavedSynergyCardProps {
+  profile: SynergyProfile;
+  onDelete: () => void;
+  onDuplicate: () => void;
+}
+
+const SavedSynergyCard: FC<SavedSynergyCardProps> = ({ profile, onDelete, onDuplicate }) => (
+  <div className="rounded-2xl border border-border bg-surface/50 p-6 flex flex-col group">
+    <div className="flex-1">
+      <p className="text-xs text-secondary">{profile.acquirer.name} + {profile.target.name}</p>
+      <h3 className="text-lg font-bold text-white mt-1">{profile.name}</h3>
+      <p className="text-sm text-slate-300 mt-2 h-10">{profile.summary}</p>
+    </div>
+    <div className="mt-4 pt-4 border-t border-border/50 flex justify-between items-center">
+      <Link href={`/dashboard/valuation/synergies/${profile.id}`} className="text-sm font-semibold text-primary hover:underline">
+        Edit Model
+      </Link>
+      <div className="flex items-center gap-2 text-secondary">
+        <button onClick={(e) => { e.stopPropagation(); onDuplicate(); }} className="hover:text-primary"><Copy size={16} /></button>
+        <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="hover:text-red-500"><Trash2 size={16} /></button>
+      </div>
+    </div>
+  </div>
+);
+export default SavedSynergyCard;
