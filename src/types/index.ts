@@ -1,17 +1,5 @@
 // types/index.ts
-export interface NavItem {
-  id: string;
-  name: string;
-  href: string;
-  icon: React.ElementType; // Will hold the Lucide icon component
-}
-
-export interface NavConfig {
-  [key: string]: {
-    title: string;
-    subFeatures: NavItem[];
-  };
-}
+import { LucideIcon } from 'lucide-react';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -305,11 +293,22 @@ export type FeatureKey =
   | 'reports'
   | 'analytics' | 'valuation' | 'reports' | 'notifications' | 'settings';
 
-interface SubFeature {
+export interface NavItem {
+  id: string;
+  name: string;
+  href: string;
+  icon: LucideIcon;
+}
+
+export interface SubFeature {
   name: string;
   href: string;
 }
 
+export interface FeatureConfig {
+  title: string;
+  subFeatures: SubFeature[];
+}
 
 
 export const featureConfig: Record<FeatureKey, { title: string; subFeatures: SubFeature[] }> = {

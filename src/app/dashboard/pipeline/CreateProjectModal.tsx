@@ -19,7 +19,6 @@ const CreateProjectModal: FC<CreateProjectModalProps> = ({ isOpen, onClose, onCr
 
     const handleCompanySelect = (company: Company) => {
         setSelectedCompany(company);
-        // Auto-suggest a name but allow editing
         setProjectName(`Acquisition of ${company.name}`);
         setStep(2);
     };

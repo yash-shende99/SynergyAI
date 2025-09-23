@@ -1,4 +1,5 @@
 import { FC } from 'react';
+import Link from 'next/link';
 import { Project, DealStatus } from '../../../types';
 
 // --- THIS IS THE FIX ---
@@ -18,6 +19,7 @@ const getStatusColor = (status: DealStatus) => {
 
 const DealKanbanCard: FC<DealKanbanCardProps> = ({ project }) => {
   return (
+    <Link href={`/dashboard/project/${project.id}`}>
     <div className="rounded-lg border border-border bg-surface/50 p-4 space-y-3">
       <span className={`px-2 py-1 text-xs font-semibold rounded-full border ${getStatusColor(project.status)}`}>
         {project.status}
@@ -41,6 +43,7 @@ const DealKanbanCard: FC<DealKanbanCardProps> = ({ project }) => {
         ))}
       </div>
     </div>
+    </Link>
   );
 };
 export default DealKanbanCard;
