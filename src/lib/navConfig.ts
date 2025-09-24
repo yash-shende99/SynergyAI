@@ -47,7 +47,7 @@ export const featureConfig: Record<string, FeatureConfig> = {
     subFeatures: [
       { name: 'Search', href: '/dashboard/sourcing' },
       { name: 'Filters', href: '/dashboard/sourcing/filters' },
-      { name: 'Watchlists', href: '/dashboard/sourcing/watchlists' },
+      { name: 'Watchlists', href: '/dashboard/sourcing/watchlist' },
       { name: 'Market Maps', href: '/dashboard/sourcing/maps' },
       { name: 'Strategic Engine', href: '/dashboard/sourcing/engine' },
     ]
@@ -192,7 +192,7 @@ export const globalSubFeatures = {
     subFeatures: [
       { name: 'Search', href: '/dashboard/sourcing' },
       { name: 'Filters', href: '/dashboard/sourcing/filters' },
-      { name: 'Watchlists', href: '/dashboard/sourcing/watchlists' },
+      { name: 'Watchlists', href: '/dashboard/sourcing/watchlist' },
       { name: 'Market Maps', href: '/dashboard/sourcing/maps' },
       { name: 'Strategic Engine', href: '/dashboard/sourcing/engine' },
     ],

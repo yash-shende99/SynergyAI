@@ -11,14 +11,15 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const projectId = params.projectId as string;
   
+  // Fix: Use the correct base path without duplication
   const baseHref = `/dashboard/project/${projectId}`;
   const activeFeature = findActiveFeature(pathname, projectNavItems, baseHref);
   const config = featureConfig[activeFeature.id] || {};
 
-  const projectScopedSubFeatures = (config.subFeatures || []).map(sf => ({
-    ...sf,
-    href: `${baseHref}${sf.href}`
-  }));
+  // Debug: Log the paths to see what's happening
+  console.log('Pathname:', pathname);
+  console.log('BaseHref:', baseHref);
+  console.log('SubFeatures:', config.subFeatures);
 
   return (
     <div className="flex h-screen bg-background text-white overflow-hidden font-sans p-4">
@@ -28,10 +29,10 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
       />
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         <FeatureHeader 
           title={config.title || 'Project Workspace'} 
-          subFeatures={projectScopedSubFeatures}
+          subFeatures={config.subFeatures || []}
           onMenuClick={() => setIsSidebarOpen(true)}
           baseHref={baseHref}
         />

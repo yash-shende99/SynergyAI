@@ -1,6 +1,5 @@
-// UploadSection.tsx
+// components/features/vdr/upload/UploadSection.tsx
 'use client';
-
 import { useState, useEffect, useCallback } from 'react';
 import FileUploader from './FileUploader';
 import UploadStatusPanel from './UploadStatusPanel';
@@ -9,20 +8,25 @@ import { UploadedFile } from '../../../../types';
 import { supabase } from '../../../../lib/supabaseClient';
 import { Loader2 } from 'lucide-react';
 
-export default function UploadSection() {
+interface UploadSectionProps {
+  projectId: string; // Add projectId as a prop
+}
+
+export default function UploadSection({ projectId }: UploadSectionProps) {
   const [recentUploads, setRecentUploads] = useState<UploadedFile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('General');
-  const MOCK_PROJECT_ID = '00000000-0000-0000-0000-000000000001';
 
   const fetchRecentUploads = useCallback(async () => {
+    if (!projectId) return;
+    
     setIsLoading(true);
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { setIsLoading(false); return; }
 
     try {
-      const response = await fetch(`http://localhost:8000/api/projects/${MOCK_PROJECT_ID}/vdr/documents`, {
+      const response = await fetch(`http://localhost:8000/api/projects/${projectId}/vdr/documents`, {
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       });
 
@@ -46,24 +50,30 @@ export default function UploadSection() {
     } finally {
       setIsLoading(false);
     }
-  }, [MOCK_PROJECT_ID]);
+  }, [projectId]); // Add projectId to dependencies
 
   useEffect(() => {
     fetchRecentUploads();
   }, [fetchRecentUploads]);
 
   const handleFileUpload = async (files: File[]) => {
+    if (!projectId) {
+      alert("Project ID not found");
+      return;
+    }
+    
     setIsUploading(true);
     const file = files[0];
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { alert("Please log in"); setIsUploading(false); return; }
 
     try {
-      console.log("Starting file upload:", file.name, "to category:", selectedCategory);
+      console.log("Starting file upload:", file.name, "to category:", selectedCategory, "for project:", projectId);
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('project_id', MOCK_PROJECT_ID);
+      formData.append('project_id', projectId); // Use actual projectId
       formData.append('category', selectedCategory);
+      
       const response = await fetch(`http://localhost:8000/api/vdr/documents/upload`, {
         method: 'POST',
         headers: {
@@ -71,7 +81,6 @@ export default function UploadSection() {
         },
         body: formData
       });
-
 
       console.log("Upload response status:", response.status);
 
@@ -91,18 +100,10 @@ export default function UploadSection() {
       }
     } catch (error) {
       console.error("Upload error:", error);
-
-      // Safe error message handling
       let errorMessage = "File upload failed";
-
       if (error instanceof Error) {
         errorMessage = error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      } else if (error && typeof error === 'object' && 'message' in error) {
-        errorMessage = String(error.message);
       }
-
       alert(errorMessage);
     } finally {
       setIsUploading(false);
@@ -110,7 +111,7 @@ export default function UploadSection() {
   };
 
   const handleDownloadDocument = async (file: UploadedFile) => {
-    if (!file.id) return;
+    if (!file.id || !projectId) return;
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -129,7 +130,6 @@ export default function UploadSection() {
         throw new Error(`Download failed: ${response.status} ${errorText}`);
       }
 
-      // Get filename from content-disposition header or use default
       const contentDisposition = response.headers.get('content-disposition');
       let filename = file.name;
       if (contentDisposition) {
@@ -139,7 +139,6 @@ export default function UploadSection() {
         }
       }
 
-      // Create blob from response and trigger download
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -153,17 +152,10 @@ export default function UploadSection() {
 
     } catch (error) {
       console.error("Download error:", error);
-
-      // Safe error message handling
       let errorMessage = "Failed to download document";
       if (error instanceof Error) {
         errorMessage = error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      } else if (error && typeof error === 'object' && 'message' in error) {
-        errorMessage = String(error.message);
       }
-
       alert(errorMessage);
     }
   };
@@ -171,12 +163,17 @@ export default function UploadSection() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
       <div className="space-y-4">
-        {/* Category Dropdown */}
+        {/* Category Dropdown - Update to fetch project-specific categories */}
         <CategoryDropdown
           selectedCategory={selectedCategory}
           onCategoryChange={setSelectedCategory}
+          projectId={projectId} // Pass projectId to CategoryDropdown
         />
-        <FileUploader onFileUpload={handleFileUpload} isUploading={isUploading} />
+        <FileUploader 
+          onFileUpload={handleFileUpload} 
+          isUploading={isUploading} 
+          selectedCategory={selectedCategory}
+        />
       </div>
       <div>
         {isLoading ? (

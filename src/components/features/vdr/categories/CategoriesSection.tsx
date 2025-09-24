@@ -1,5 +1,5 @@
+// components/features/vdr/categories/CategoriesSection.tsx
 'use client';
-
 import { useState, useEffect } from 'react';
 import FolderTreeView from './FolderTreeView';
 import DocumentList from './DocumentList';
@@ -8,26 +8,30 @@ import { DocumentFolderKey, Document as DocumentType, Category } from '../../../
 import { supabase } from '../../../../lib/supabaseClient';
 import { Loader2 } from 'lucide-react';
 
+interface CategoriesSectionProps {
+  projectId: string; // Add projectId prop
+}
 
-export default function CategoriesSection() {
-  const [selectedFolder, setSelectedFolder] = useState<DocumentFolderKey>('General'); // Updated type
+export default function CategoriesSection({ projectId }: CategoriesSectionProps) {
+  const [selectedFolder, setSelectedFolder] = useState<DocumentFolderKey>('General');
   const [selectedDocument, setSelectedDocument] = useState<DocumentType | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [documents, setDocuments] = useState<DocumentType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const MOCK_PROJECT_ID = '00000000-0000-0000-0000-000000000001';
   
   const normalizeCategoryName = (category: string): string => {
-  if (!category || category === 'Uncategorized') return 'Uncategorized';
-  return category;
-};
+    if (!category || category === 'Uncategorized') return 'Uncategorized';
+    return category;
+  };
 
   const fetchCategories = async () => {
+    if (!projectId) return;
+    
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch(`http://localhost:8000/api/projects/${MOCK_PROJECT_ID}/vdr/categories`, {
+      const response = await fetch(`http://localhost:8000/api/projects/${projectId}/vdr/categories`, {
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       });
 
@@ -42,70 +46,73 @@ export default function CategoriesSection() {
 
   const getUploaderName = (userId: string, userName?: string) => {
     if (userName) return userName;
-    // Fallback to user ID if name not available
     return `User ${userId?.substring(0, 8)}...`;
   };
 
   // Fetch documents by category
   const fetchDocuments = async (category: string) => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
-
-    // Normalize the category name for the API call
-    let apiCategory = category;
-    if (category === 'Uncategorized') {
-      apiCategory = 'null'; // Send 'null' for uncategorized documents
-    }
-
-    console.log('Fetching documents for category:', apiCategory);
+    if (!projectId) return;
     
-    const response = await fetch(
-      `http://localhost:8000/api/projects/${MOCK_PROJECT_ID}/vdr/documents/category/${encodeURIComponent(apiCategory)}`,
-      {
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      // Normalize the category name for the API call
+      let apiCategory = category;
+      if (category === 'Uncategorized') {
+        apiCategory = 'null';
       }
-    );
 
-    if (response.ok) {
-      const data = await response.json();
-      console.log(`Documents for ${category}:`, data);
+      console.log('Fetching documents for category:', apiCategory, 'in project:', projectId);
       
-      const formattedDocs: DocumentType[] = data.map((doc: any) => ({
-        id: doc.id,
-        name: doc.file_name,
-        uploader: getUploaderName(doc.uploaded_by_user_id),
-        date: doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString() : 'Unknown date',
-        file_path: doc.file_path || '',
-        category: doc.category || 'Uncategorized',
-        analysis_status: doc.analysis_status || 'Pending',
-        uploaded_by_user_id: doc.uploaded_by_user_id,
-        project_id: doc.project_id
-      }));
-      
-      setDocuments(formattedDocs);
-      setSelectedDocument(formattedDocs.length > 0 ? formattedDocs[0] : null);
+      const response = await fetch(
+        `http://localhost:8000/api/projects/${projectId}/vdr/documents/category/${encodeURIComponent(apiCategory)}`,
+        {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`Documents for ${category} in project ${projectId}:`, data);
+        
+        const formattedDocs: DocumentType[] = data.map((doc: any) => ({
+          id: doc.id,
+          name: doc.file_name,
+          uploader: getUploaderName(doc.uploaded_by_user_id),
+          date: doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString() : 'Unknown date',
+          file_path: doc.file_path || '',
+          category: doc.category || 'Uncategorized',
+          analysis_status: doc.analysis_status || 'Pending',
+          uploaded_by_user_id: doc.uploaded_by_user_id,
+          project_id: doc.project_id
+        }));
+        
+        setDocuments(formattedDocs);
+        setSelectedDocument(formattedDocs.length > 0 ? formattedDocs[0] : null);
+      }
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {
-    console.error('Error fetching documents:', error);
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
-useEffect(() => {
-  fetchCategories().then(() => {
-    console.log('Categories loaded:', categories);
-  });
-}, []);
+  useEffect(() => {
+    if (projectId) {
+      fetchCategories().then(() => {
+        console.log('Categories loaded for project:', projectId);
+      });
+    }
+  }, [projectId]);
 
-useEffect(() => {
-  if (selectedFolder) {
-    console.log('Fetching documents for category:', selectedFolder);
-    setIsLoading(true);
-    fetchDocuments(selectedFolder);
-  }
-}, [selectedFolder]);
+  useEffect(() => {
+    if (selectedFolder && projectId) {
+      console.log('Fetching documents for category:', selectedFolder, 'in project:', projectId);
+      setIsLoading(true);
+      fetchDocuments(selectedFolder);
+    }
+  }, [selectedFolder, projectId]);
 
   const handleDocumentDelete = async (documentId: string) => {
     try {
@@ -134,6 +141,7 @@ useEffect(() => {
       alert("Failed to delete document");
     }
   };
+
   const handleDownloadDocument = async (document: DocumentType) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -149,17 +157,16 @@ useEffect(() => {
       if (response.ok) {
         const blob = await response.blob();
 
-        // Use window.document instead of just document
         if (typeof window !== 'undefined' && window.document) {
           const url = window.URL.createObjectURL(blob);
-          const a = window.document.createElement('a'); // Use window.document
+          const a = window.document.createElement('a');
           a.style.display = 'none';
           a.href = url;
           a.download = document.name;
-          window.document.body.appendChild(a); // Use window.document
+          window.document.body.appendChild(a);
           a.click();
           window.URL.revokeObjectURL(url);
-          window.document.body.removeChild(a); // Use window.document
+          window.document.body.removeChild(a);
         }
       } else {
         alert("Download failed");

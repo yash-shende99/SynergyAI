@@ -1,62 +1,65 @@
 'use client';
 
-import { useState } from 'react';
-import RiskScoreCard from '../../../../../components/features/analytics/risk/RiskScoreCard';
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import { TargetCompanyRiskProfile } from '../../../../../types';
-
-// Mock data for multiple target companies
-const mockTargets: TargetCompanyRiskProfile[] = [
-  {
-    id: 'target-1',
-    name: 'SolarTech Inc.',
-    overallScore: 68,
-    topRisks: ['Revenue dependency on one client.', 'Pending litigation from ex-employee.', 'High employee attrition rate in Q2.'],
-    detailedBreakdown: [
-      { category: 'Financial', score: 72, insights: ['70% revenue from top 2 customers.', 'Debt-to-Equity > 3x average.'] },
-      { category: 'Legal', score: 55, insights: ['Pending litigation.', 'IP ownership unverified.'] },
-      { category: 'Operational', score: 63, insights: ['High supplier dependency.', 'Key-person risk on CTO.'] },
-      { category: 'Reputational', score: 80, insights: ['Negative press in Q2.', 'Poor Glassdoor reviews.'] },
-      { category: 'Cultural', score: 45, insights: ['High attrition rate.', 'Management style mismatch.'] },
-    ]
-  },
-  {
-    id: 'target-2',
-    name: 'AquaLogistics',
-    overallScore: 35,
-    topRisks: ['Low margin contracts.', 'High fuel cost sensitivity.', 'Pending union negotiations.'],
-    detailedBreakdown: [
-      { category: 'Financial', score: 45, insights: ['Margins below industry average.'] },
-      { category: 'Legal', score: 25, insights: ['No active litigation.'] },
-      { category: 'Operational', score: 50, insights: ['Aging fleet of vehicles.'] },
-      { category: 'Reputational', score: 20, insights: ['Strong industry reputation.'] },
-      { category: 'Cultural', score: 30, insights: ['Low employee turnover.'] },
-    ]
-  },
-  {
-    id: 'target-3',
-    name: 'GeoFarms',
-    overallScore: 52,
-    topRisks: ['Weather dependency.', 'Regulatory uncertainty.', 'Supply chain disruptions.'],
-    detailedBreakdown: [], // Example with no detailed data yet
-  }
-];
+import { Loader2, AlertTriangle } from 'lucide-react';
+import { supabase } from '../../../../../lib/supabaseClient';
+import RiskOverview from '../../../../../components/features/analytics/risk/RiskOverview';
+import TopRisksPanel from '../../../../../components/features/analytics/risk/TopRisksPanel';
 
 export default function AnalyticsRiskPage() {
-  // This state tracks which card is currently expanded
-  // --- AFTER ---
-const [expandedCompanyId, setExpandedCompanyId] = useState<string | null>(null);
+  const [riskProfile, setRiskProfile] = useState<TargetCompanyRiskProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const params = useParams();
+  const projectId = params.projectId as string;
+
+  useEffect(() => {
+    async function fetchRiskProfile() {
+      if (!projectId) return;
+      setIsLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setIsLoading(false); return; }
+      
+      try {
+        const response = await fetch(`http://localhost:8000/api/projects/${projectId}/risk_profile`, {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || "Failed to fetch risk profile");
+        }
+        const data = await response.json();
+        setRiskProfile(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchRiskProfile();
+  }, [projectId]);
+
+  if (isLoading) {
+    return <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>;
+  }
+
+  if (error || !riskProfile) {
+    return <div className="flex flex-col justify-center items-center h-full text-red-400"><AlertTriangle className="h-8 w-8 mb-2"/><p className="font-semibold">Error Loading Risk Profile</p><p className="text-sm text-secondary">{error || "An unknown error occurred."}</p></div>;
+  }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {mockTargets.map(company => (
-        <RiskScoreCard 
-          key={company.id}
-          company={company}
-          isExpanded={expandedCompanyId === company.id}
-         // --- AFTER ---
-onClick={() => setExpandedCompanyId(expandedCompanyId === company.id ? null : company.id)}
-        />
-      ))}
+    <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-white">AI-Generated Risk Profile for {riskProfile.name}</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <TopRisksPanel topRisks={riskProfile.topRisks} />
+          </div>
+          <div className="lg:col-span-1">
+            <RiskOverview riskProfile={riskProfile} />
+          </div>
+        </div>
     </div>
   );
 }

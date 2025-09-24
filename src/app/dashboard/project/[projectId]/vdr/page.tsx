@@ -1,11 +1,13 @@
+// app/dashboard/project/[projectId]/vdr/page.tsx
 'use client';
-
+import { useParams } from 'next/navigation';
 import UploadSection from '../../../../../components/features/vdr/upload/UploadSection';
 
-// This is the new default page for the VDR module (/dashboard/vdr).
-// It correctly renders the "Upload" feature.
-export default function VDRUploadPage() {
+export default function ProjectVDRPage() {
+  const params = useParams();
+  const projectId = params.projectId as string;
+
   return (
-    <UploadSection />
+    <UploadSection projectId={projectId} />
   );
 }

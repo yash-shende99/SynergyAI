@@ -3,8 +3,7 @@ import { FC } from 'react';
 import { Menu } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { SubFeature, NavItem } from '../../../types';
-import { findActiveFeature } from '../../../lib/navConfig';
+import { SubFeature } from '../../../types';
 
 interface FeatureHeaderProps {
   title: string;
@@ -16,8 +15,50 @@ interface FeatureHeaderProps {
 const FeatureHeader: FC<FeatureHeaderProps> = ({ title, subFeatures, onMenuClick, baseHref }) => {
   const pathname = usePathname();
   
-  const subFeatureNavItems: NavItem[] = subFeatures.map(sf => ({ ...sf, id: sf.name.toLowerCase(), icon: Menu }));
-  const activeSubFeature = findActiveFeature(pathname, subFeatureNavItems, baseHref);
+  // Debug logging
+  console.log('FeatureHeader - Pathname:', pathname);
+  console.log('FeatureHeader - BaseHref:', baseHref);
+  console.log('FeatureHeader - SubFeatures:', subFeatures);
+
+  // Improved active sub-feature detection
+  const getActiveSubFeature = () => {
+    if (!subFeatures.length) return null;
+    
+    let bestMatch: SubFeature | null = null;
+    
+    for (const feature of subFeatures) {
+      // Ensure feature.href doesn't already contain baseHref
+      let featureHref = feature.href;
+      
+      // If feature.href already starts with baseHref, use it as is
+      if (featureHref.startsWith(baseHref)) {
+        // It's already a full path, use it directly
+      } else {
+        // Otherwise, combine baseHref and feature.href
+        featureHref = `${baseHref}${feature.href.startsWith('/') ? '' : '/'}${feature.href}`;
+      }
+      
+      console.log('Checking feature:', feature.name, 'Href:', featureHref);
+      
+      // Exact match
+      if (pathname === featureHref) {
+        console.log('Exact match found:', feature.name);
+        return feature;
+      }
+      
+      // Partial match (nested routes)
+      if (pathname.startsWith(featureHref)) {
+        if (!bestMatch || featureHref.length > bestMatch.href.length) {
+          bestMatch = { ...feature, href: featureHref };
+        }
+      }
+    }
+    
+    console.log('Best match:', bestMatch?.name);
+    return bestMatch;
+  };
+
+  const activeSubFeature = getActiveSubFeature();
 
   return (
     <header className="flex-shrink-0 flex flex-col p-2">
@@ -35,40 +76,57 @@ const FeatureHeader: FC<FeatureHeaderProps> = ({ title, subFeatures, onMenuClick
           <h2 className="text-xl font-bold text-white truncate">{title}</h2>
         </div>
 
-        {/* Center: Sub-Feature Navigation (visible on medium screens and up) */}
+        {/* Center: Sub-Feature Navigation */}
         <nav className="hidden lg:flex absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-4 bg-secondarySurface rounded-full px-6 py-4 border border-border space-x-2">
-          {subFeatures.map((feature) => (
-            <Link href={feature.href} key={feature.name}>
-              <span className={`py-2 px-1 text-sm font-medium cursor-pointer transition-colors whitespace-nowrap border-b-2 
-                ${activeSubFeature?.href === feature.href
+          {subFeatures.map((feature) => {
+            // Build the correct href
+            let featureHref = feature.href;
+            if (!featureHref.startsWith(baseHref)) {
+              featureHref = `${baseHref}${feature.href.startsWith('/') ? '' : '/'}${feature.href}`;
+            }
+            
+            const isActive = activeSubFeature?.name === feature.name;
+            
+            return (
+              <Link href={featureHref} key={feature.name}>
+                <span className={`py-2 px-1 text-sm font-medium cursor-pointer transition-colors whitespace-nowrap border-b-2 
+                  ${isActive
+                    ? 'text-primary border-primary'
+                    : 'text-secondary hover:text-white border-transparent'
+                }`}>
+                  {feature.name}
+                </span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* Right Side: A placeholder for action buttons */}
+        <div className="w-24 hidden sm:block"></div>
+      </div>
+
+      {/* Mobile Navigation */}
+      <nav className="lg:hidden flex items-center gap-4 px-4 sm:px-6 overflow-x-auto scrollbar-hide border-t border-border/50 py-2">
+        {subFeatures.map((feature) => {
+          let featureHref = feature.href;
+          if (!featureHref.startsWith(baseHref)) {
+            featureHref = `${baseHref}${feature.href.startsWith('/') ? '' : '/'}${feature.href}`;
+          }
+          
+          const isActive = activeSubFeature?.name === feature.name;
+          
+          return (
+            <Link href={featureHref} key={feature.name}>
+              <span className={`py-2 text-sm font-medium cursor-pointer transition-colors whitespace-nowrap border-b-2 
+                ${isActive
                   ? 'text-primary border-primary'
                   : 'text-secondary hover:text-white border-transparent'
               }`}>
                 {feature.name}
               </span>
             </Link>
-          ))}
-        </nav>
-
-        {/* Right Side: A placeholder for action buttons */}
-        <div className="w-24 hidden sm:block">
-          {/* Action buttons will go here */}
-        </div>
-      </div>
-
-      {/* Mobile Navigation (Scrollable Tab Bar) */}
-      <nav className="lg:hidden flex items-center gap-4 px-4 sm:px-6 overflow-x-auto scrollbar-hide border-t border-border/50">
-        {subFeatures.map((feature) => (
-          <Link href={feature.href} key={feature.name}>
-            <span className={`py-2 text-sm font-medium cursor-pointer transition-colors whitespace-nowrap border-b-2 
-              ${activeSubFeature?.href === feature.href
-                ? 'text-primary border-primary'
-                : 'text-secondary hover:text-white border-transparent'
-            }`}>
-              {feature.name}
-            </span>
-          </Link>
-        ))}
+          );
+        })}
       </nav>
     </header>
   );

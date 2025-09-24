@@ -1,3 +1,5 @@
+'use client';
+
 import { FC, useState, useEffect } from 'react';
 import { FileText, Loader2, ExternalLink } from 'lucide-react';
 import { supabase } from '../../../../lib/supabaseClient';
@@ -14,9 +16,10 @@ interface Document {
 
 interface DocumentPreviewProps {
   document: Document | null;
+  projectId?: string;
 }
 
-const DocumentPreview: FC<DocumentPreviewProps> = ({ document }) => {
+const DocumentPreview: FC<DocumentPreviewProps> = ({ document, projectId }) => {
   const [pdfUrl, setPdfUrl] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
@@ -28,7 +31,6 @@ const DocumentPreview: FC<DocumentPreviewProps> = ({ document }) => {
       resetPdfViewer();
     }
 
-    // Cleanup function
     return () => {
       if (pdfUrl) {
         URL.revokeObjectURL(pdfUrl);
@@ -47,7 +49,6 @@ const DocumentPreview: FC<DocumentPreviewProps> = ({ document }) => {
         throw new Error('Not authenticated');
       }
 
-      // Fetch the PDF file as blob
       const response = await fetch(`http://localhost:8000/api/vdr/documents/${doc.id}/download`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
@@ -61,7 +62,6 @@ const DocumentPreview: FC<DocumentPreviewProps> = ({ document }) => {
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       
-      // Revoke previous URL if exists
       if (pdfUrl) {
         URL.revokeObjectURL(pdfUrl);
       }
@@ -111,15 +111,22 @@ const DocumentPreview: FC<DocumentPreviewProps> = ({ document }) => {
             {getFileIcon()}
             <h3 className="font-semibold text-white truncate">{document.name}</h3>
           </div>
-          {pdfUrl && (
-            <button
-              onClick={openInNewTab}
-              className="p-1 text-secondary hover:text-primary transition-colors"
-              title="Open in new tab"
-            >
-              <ExternalLink size={16} />
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {projectId && (
+              <span className="text-xs text-secondary bg-surface px-2 py-1 rounded">
+                Project
+              </span>
+            )}
+            {pdfUrl && (
+              <button
+                onClick={openInNewTab}
+                className="p-1 text-secondary hover:text-primary transition-colors"
+                title="Open in new tab"
+              >
+                <ExternalLink size={16} />
+              </button>
+            )}
+          </div>
         </div>
         <p className="text-xs text-secondary">Uploaded by {document.uploader} on {document.date}</p>
         {document.category && (
@@ -144,15 +151,12 @@ const DocumentPreview: FC<DocumentPreviewProps> = ({ document }) => {
           </div>
         ) : pdfUrl ? (
           <div className="flex-1 flex flex-col">
-            {/* PDF Viewer using iframe */}
             <iframe
               src={pdfUrl}
               className="flex-1 w-full border-0"
               title={`PDF Viewer - ${document.name}`}
               style={{ minHeight: '500px' }}
             />
-            
-            
           </div>
         ) : (
           <div className="flex items-center justify-center h-full">

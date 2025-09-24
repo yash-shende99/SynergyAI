@@ -1,40 +1,21 @@
-import SynergyGaugeWidget from './SynergyGaugeWidget';
-import SynergyBreakdownCard from './SynergyBreakdownCard';
-import DetailedInsightsPanel from './DetailedInsightsPanel';
-import ScenarioSimulator from './ScenarioSimulator';
-import { SynergyItem } from '../../../../types';
+import { FC } from 'react';
+import { SynergyAiScore } from '../../../../types';
+import ScoreboardPanel from './ScoreboardPanel';
+import AiRationalePanel from './AiRationalePanel';
 
-// Mock Data
-const costSynergies: SynergyItem[] = [
-  { name: 'SG&A Reduction', value: 10, confidence: 'High' },
-  { name: 'Supply Chain', value: 8, confidence: 'High' },
-  { name: 'Infrastructure', value: 7, confidence: 'Medium' },
-];
-
-const revenueSynergies: SynergyItem[] = [
-  { name: 'Cross-selling', value: 40, confidence: 'Medium' },
-  { name: 'Market Expansion', value: 15, confidence: 'Low' },
-];
-
-const SynergyScoreSection = () => {
+const SynergyScoreSection: FC<{ scoreData: SynergyAiScore }> = ({ scoreData }) => {
   return (
-    <div className="space-y-6">
-      {/* 1. Hero Section */}
-      <SynergyGaugeWidget />
-
-      {/* 2. Breakdown Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <SynergyBreakdownCard title="Cost Synergies" iconType="cost" data={costSynergies} />
-        <SynergyBreakdownCard title="Revenue Synergies" iconType="revenue" data={revenueSynergies} />
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="lg:col-span-1">
+        <ScoreboardPanel 
+          overallScore={scoreData.overallScore} 
+          subScores={scoreData.subScores} 
+        />
       </div>
-
-      {/* 3. Detailed Insights Panel */}
-      <DetailedInsightsPanel />
-      
-      {/* 4. Scenario Simulator */}
-      <ScenarioSimulator />
+      <div className="lg:col-span-2">
+        <AiRationalePanel rationale={scoreData.rationale} />
+      </div>
     </div>
   );
 };
-
 export default SynergyScoreSection;

@@ -1,6 +1,40 @@
 // types/index.ts
 import { LucideIcon } from 'lucide-react';
 
+export type GraphCategory = 'Target' | 'Executive' | 'Competitor' | 'Subsidiary' | 'Partner';
+
+export interface GraphNode {
+  id: string; // cin or a generated unique ID
+  name: string;
+  category: GraphCategory;
+  symbolSize: number; // To control the size of the bubble
+  value: string; // e.g., Revenue for a company, Role for an executive
+}
+
+export interface GraphLink {
+  source: string; // id of the source node
+  target: string; // id of the target node
+}
+
+export interface KnowledgeGraphData {
+  nodes: GraphNode[];
+  links: GraphLink[];
+  categories: { name: GraphCategory }[];
+}
+
+
+export interface SynergySubScore {
+  category: 'Financial Synergy' | 'Strategic Fit' | 'Risk Profile';
+  score: number;
+  summary: string;
+}
+
+export interface SynergyAiScore {
+  overallScore: number;
+  subScores: SynergySubScore[];
+  rationale: string;
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -217,14 +251,14 @@ export interface Scenario {
     discountRate: number;
   }
 }
-
 export type AlertPriority = 'Critical' | 'High' | 'Medium' | 'Low';
+export type AlertType = 'Financial' | 'Legal' | 'Market' | 'Reputational' | 'Operational' | 'Leadership' | 'Results' | 'News';
 
 export interface Alert {
-  id: string;
+  id: string; // Will be the event ID
   priority: AlertPriority;
   title: string;
-  type: 'Financial' | 'Legal' | 'Market' | 'Reputational';
+  type: AlertType;
   source: string;
   timestamp: string;
   description: string;
@@ -279,7 +313,11 @@ export interface TargetCompanyRiskProfile {
   id: string;
   name: string;
   overallScore: number;
-  topRisks: string[];
+  // This is now an array of objects, each with a risk and a mitigation
+  topRisks: {
+    risk: string;
+    mitigation: string;
+  }[];
   detailedBreakdown: RiskItem[];
 }
 

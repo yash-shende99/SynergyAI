@@ -1,22 +1,22 @@
 'use client';
 
 import { useState } from 'react';
-import GraphCanvas from './GraphCanvas';
+import { KnowledgeGraphData, GraphNode } from '../../../../types';
+import InteractiveGraph from './InteractiveGraph';
 import GraphSidebar from './GraphSidebar';
 
-export default function KnowledgeGraphSection() {
+const KnowledgeGraphSection: React.FC<{ graphData: KnowledgeGraphData }> = ({ graphData }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  // In a real app, this would hold the data of the clicked node
-  const [selectedNode, setSelectedNode] = useState({ type: 'Company', name: 'SolarTech Inc.' });
+  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
 
   return (
-    <div className="flex h-[70vh] gap-6">
-      {/* Main Graph Area */}
-      <div className="flex-1">
-        <GraphCanvas />
+    <div className="flex h-[80vh] gap-6">
+      <div className="flex-1 relative">
+        <InteractiveGraph 
+          graphData={graphData} 
+          onNodeClick={(node) => setSelectedNode(node)} 
+        />
       </div>
-
-      {/* Collapsible Right Sidebar */}
       <GraphSidebar 
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -24,4 +24,5 @@ export default function KnowledgeGraphSection() {
       />
     </div>
   );
-}
+};
+export default KnowledgeGraphSection;

@@ -1,22 +1,28 @@
+// components/features/vdr/upload/CategoryDropdown.tsx
 'use client';
-
-import { FC, useState } from 'react';
+import { FC, useState, useEffect } from 'react';
 import { ChevronDown, Plus } from 'lucide-react';
+import { supabase } from '../../../../lib/supabaseClient';
 
 interface CategoryDropdownProps {
   selectedCategory: string;
   onCategoryChange: (category: string) => void;
+  projectId?: string; // Add optional projectId
 }
 
 const CategoryDropdown: FC<CategoryDropdownProps> = ({
   selectedCategory,
   onCategoryChange,
+  projectId
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showAddInput, setShowAddInput] = useState(false);
   const [newCategory, setNewCategory] = useState('');
+  const [categories, setCategories] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const categories = [
+  // Default categories
+  const defaultCategories = [
     "Financials",
     "Legal & Compliance", 
     "Human Resources",
@@ -28,6 +34,40 @@ const CategoryDropdown: FC<CategoryDropdownProps> = ({
     "Research",
     "Marketing"
   ];
+
+  // Fetch project-specific categories if projectId is provided
+  useEffect(() => {
+    const fetchProjectCategories = async () => {
+      if (!projectId) {
+        setCategories(defaultCategories);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        const response = await fetch(`http://localhost:8000/api/projects/${projectId}/vdr/categories-list`, {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+
+        if (response.ok) {
+          const projectCategories = await response.json();
+          setCategories([...projectCategories, ...defaultCategories.filter(cat => !projectCategories.includes(cat))]);
+        } else {
+          setCategories(defaultCategories);
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        setCategories(defaultCategories);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProjectCategories();
+  }, [projectId]);
 
   const handleAddCategory = () => {
     if (newCategory.trim() && !categories.includes(newCategory.trim())) {
@@ -51,6 +91,7 @@ const CategoryDropdown: FC<CategoryDropdownProps> = ({
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between p-3 rounded-lg bg-background border border-border text-white hover:border-primary/50 transition-colors"
+        disabled={isLoading}
       >
         <span>{selectedCategory}</span>
         <ChevronDown size={16} className={`transform transition-transform ${isOpen ? 'rotate-180' : ''}`} />

@@ -1,3 +1,4 @@
+// components/features/vdr/categories/FolderTreeView.tsx
 import { FC } from 'react';
 import { Folder } from 'lucide-react';
 import { DocumentFolderKey } from '../../../../types';
@@ -9,15 +10,28 @@ interface Category {
 
 interface FolderTreeViewProps {
   folders: Category[];
-  selectedFolder: DocumentFolderKey; // Updated type
-  onSelectFolder: (folderName: DocumentFolderKey) => void; // Updated type
+  selectedFolder: DocumentFolderKey;
+  onSelectFolder: (folderName: DocumentFolderKey) => void;
+  projectId?: string; // Optional projectId for context
 }
 
-const FolderTreeView: FC<FolderTreeViewProps> = ({ folders, selectedFolder, onSelectFolder }) => {
+const FolderTreeView: FC<FolderTreeViewProps> = ({ 
+  folders, 
+  selectedFolder, 
+  onSelectFolder,
+  projectId 
+}) => {
   return (
     <div className="p-4 rounded-xl border border-border bg-surface/50 h-full">
-      <h3 className="font-semibold text-white mb-4">Categories</h3>
-      <div className="space-y-1 max-h-96 overflow-y-auto"> {/* Added scroll for many categories */}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-white">Categories</h3>
+        {projectId && (
+          <span className="text-xs text-secondary bg-surface px-2 py-1 rounded">
+            Project: {projectId.substring(0, 8)}...
+          </span>
+        )}
+      </div>
+      <div className="space-y-1 max-h-96 overflow-y-auto">
         {folders.map(folder => (
           <button
             key={folder.name}
@@ -28,9 +42,9 @@ const FolderTreeView: FC<FolderTreeViewProps> = ({ folders, selectedFolder, onSe
                 : 'text-secondary hover:bg-surface'
             }`}
           >
-            <div className="flex items-center gap-2 min-w-0 flex-1"> {/* Added flex styles */}
+            <div className="flex items-center gap-2 min-w-0 flex-1">
               <Folder size={16} className="flex-shrink-0" />
-              <span className="truncate" title={folder.name}> {/* Added truncate and title */}
+              <span className="truncate" title={folder.name}>
                 {folder.name}
               </span>
             </div>
@@ -43,6 +57,9 @@ const FolderTreeView: FC<FolderTreeViewProps> = ({ folders, selectedFolder, onSe
         {folders.length === 0 && (
           <div className="text-center text-secondary py-4">
             <p className="text-sm">No categories found</p>
+            {projectId && (
+              <p className="text-xs mt-1">Upload documents to see categories</p>
+            )}
           </div>
         )}
       </div>

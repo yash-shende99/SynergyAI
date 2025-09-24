@@ -10,6 +10,7 @@ interface DocumentListProps {
   onSelectDocument: (doc: Document) => void;
   onDeleteDocument: (docId: string) => void;
   onDownloadDocument: (doc: Document) => void;
+  projectId?: string;
 }
 
 const DocumentList: FC<DocumentListProps> = ({
@@ -17,7 +18,8 @@ const DocumentList: FC<DocumentListProps> = ({
   selectedDocument,
   onSelectDocument,
   onDeleteDocument,
-  onDownloadDocument
+  onDownloadDocument,
+  projectId
 }) => {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
 
@@ -42,14 +44,22 @@ const DocumentList: FC<DocumentListProps> = ({
 
   return (
     <div className="p-4 rounded-xl border border-border bg-surface/50 h-full">
-      <h3 className="font-semibold text-white mb-4">Documents</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-white">Documents</h3>
+        {projectId && documents.length > 0 && (
+          <span className="text-xs text-secondary">
+            {documents.length} document(s)
+          </span>
+        )}
+      </div>
       <div className="space-y-2">
         {documents.map(doc => (
           <div
             key={doc.id}
             onClick={() => onSelectDocument(doc)}
-            className={`w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors cursor-pointer ${selectedDocument?.id === doc.id ? 'bg-surface' : 'hover:bg-surface/50'
-              }`}
+            className={`w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors cursor-pointer ${
+              selectedDocument?.id === doc.id ? 'bg-surface' : 'hover:bg-surface/50'
+            }`}
           >
             <FileText size={20} className="text-secondary flex-shrink-0" />
             <div className="flex-1 overflow-hidden">
