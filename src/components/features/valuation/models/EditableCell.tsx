@@ -17,6 +17,7 @@ const EditableCell: FC<EditableCellProps> = ({ initialValue, onSave, isText = fa
     setValue(initialValue?.toString() ?? '');
   }, [initialValue]);
 
+
   const handleSave = () => {
     onSave(value);
     setIsEditing(false);

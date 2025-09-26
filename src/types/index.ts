@@ -1,6 +1,34 @@
 // types/index.ts
 import { LucideIcon } from 'lucide-react';
 
+export interface VdrSearchResult {
+  docId: string;
+  docName: string;
+  excerpt: string; // This will contain the highlighted text snippet
+  source: string; // Filename
+}
+
+
+// Add to your existing types
+export interface ValuationModel {
+  id: string;
+  name: string;
+  type: 'DCF' | 'LBO' | 'CCA' | 'Precedent Transactions';
+  lastModified: string;
+  projectId?: string; // NEW: Make it project-specific
+  createdBy?: string; // NEW: Track creator
+}
+
+// NEW: Project-specific template interface
+export interface ValuationTemplate {
+  id: string;
+  name: string;
+  description: string;
+  lastUsed: string;
+  thumbnailUrl?: string;
+  projectId: string; // Link to specific project
+}
+
 export type GraphCategory = 'Target' | 'Executive' | 'Competitor' | 'Subsidiary' | 'Partner';
 
 export interface GraphNode {

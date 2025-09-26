@@ -3,6 +3,7 @@ import {Button} from '../../../ui/button';
 import { Scenario } from '../../../../types';
 import { Save, RotateCcw, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 
 interface ScenarioHeaderProps {
   scenario: Scenario;
@@ -13,7 +14,7 @@ const ScenarioHeader: FC<ScenarioHeaderProps> = ({ scenario, onSave, onReset }) 
   return (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <Link href="/dashboard/valuation/scenarios" className="flex items-center gap-2 text-sm text-secondary hover:text-white mb-2">
+        <Link href="/dashboard/project/${projectId}/valuation/scenarios" className="flex items-center gap-2 text-sm text-secondary hover:text-white mb-2">
             <ArrowLeft size={16}/> Back to Scenarios
         </Link>
         <h2 className="text-2xl font-bold text-white">Scenario Analysis</h2>

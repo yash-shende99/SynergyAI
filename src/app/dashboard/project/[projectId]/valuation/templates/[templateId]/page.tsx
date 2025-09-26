@@ -1,17 +1,39 @@
 'use client';
 
-import { useState } from 'react'; // <-- 1. Import useState
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import SpreadsheetInterface from '../../../../../../../components/features/valuation/workspace/SpreadsheetInterface';
 import TemplateSidePanel from '../../../../../../../components/features/valuation/workspace/TemplateSidePanel';
 import Link from 'next/link';
-import {Button} from '../../../../../../../components/ui/button';
+import { Button } from '../../../../../../../components/ui/button';
 import { ArrowLeft } from 'lucide-react';
-import ChartModal from '../../../../../../../components/features/valuation/workspace/ChartModal'; // <-- 2. Import the new modal
+import ChartModal from '../../../../../../../components/features/valuation/workspace/ChartModal';
+import { Loader2 } from 'lucide-react';
 
 export default function TemplateWorkspacePage() {
-  // --- THIS IS THE NEW LOGIC ---
-  // 3. Add state to control the visibility of the chart modal
   const [isChartModalOpen, setIsChartModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const params = useParams();
+  const projectId = params.projectId as string;
+  const templateId = params.templateId as string;
+
+  useEffect(() => {
+    // Simulate loading template data
+    const loadTemplate = async () => {
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API call
+      setIsLoading(false);
+    };
+    
+    loadTemplate();
+  }, [projectId, templateId]);
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -21,13 +43,12 @@ export default function TemplateWorkspacePage() {
             <SpreadsheetInterface />
           </div>
           <div className="lg:col-span-3">
-            {/* 4. Pass down the function to open the modal */}
             <TemplateSidePanel onChartExpand={() => setIsChartModalOpen(true)} />
           </div>
         </div>
 
         <div className="flex justify-end mt-6">
-          <Link href="/dashboard/valuation">
+          <Link href={`/dashboard/projects/${projectId}/valuation`}>
             <Button variant="secondary">
               <ArrowLeft size={16} className="mr-2" />
               Back to Templates
@@ -36,7 +57,6 @@ export default function TemplateWorkspacePage() {
         </div>
       </div>
       
-      {/* 5. Render the modal component */}
       <ChartModal 
         isOpen={isChartModalOpen}
         onClose={() => setIsChartModalOpen(false)}

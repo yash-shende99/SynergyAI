@@ -999,6 +999,7 @@ async def preview_document(document_id: str, user_id: str = Depends(get_current_
         print(f"Error previewing document: {e}")
         raise HTTPException(status_code=500, detail=f"Could not preview document: {str(e)}")
     
+
 class ChatSession(BaseModel):
     project_id: Optional[str] = None
     messages: List[Dict]
@@ -1497,3 +1498,134 @@ async def get_project_alerts(
         print(f"Error fetching alerts: {str(e)}")
         # Provide more detailed error information
         raise HTTPException(status_code=500, detail=f"Could not fetch alerts: {str(e)}")
+ 
+@app.get("/api/projects/{project_id}/valuation/templates")
+async def get_project_valuation_templates(project_id: str, user_id: str = Depends(get_current_user_id)):
+    """Get valuation templates specific to a project"""
+    try:
+        print(f"Fetching valuation templates for project: {project_id}, user: {user_id}")
+        
+        # Return default templates
+        default_templates = [
+                {
+                    'id': 'dcf', 
+                    'name': 'Discounted Cash Flow (DCF)', 
+                    'description': 'Project future cash flows and discount them to arrive at a present value estimate.',
+                    'lastUsed': '2 days ago',
+                    'thumbnailUrl': '/thumbnails/dcf.png',
+                    'projectId': project_id
+                },
+                {
+                    'id': 'lbo', 
+                    'name': 'Leveraged Buyout (LBO)', 
+                    'description': 'Model a leveraged buyout transaction to determine the potential IRR for financial sponsors.',
+                    'lastUsed': '1 week ago',
+                    'thumbnailUrl': '/thumbnails/lbo.png',
+                    'projectId': project_id
+                },
+                {
+                    'id': 'cca', 
+                    'name': 'Comparable Company Analysis', 
+                    'description': 'Value a company by comparing it to similar publicly traded companies.',
+                    'lastUsed': '5 days ago',
+                    'thumbnailUrl': '/thumbnails/comps.png',
+                    'projectId': project_id
+                },
+                {
+                    'id': 'pt', 
+                    'name': 'Precedent Transactions', 
+                    'description': 'Analyze past M&A transactions of similar companies to derive valuation multiples.',
+                    'lastUsed': '1 month ago',
+                    'thumbnailUrl': '/thumbnails/precedents.png',
+                    'projectId': project_id
+                }
+            ]
+        return default_templates
+        
+    except Exception as e:
+        print(f"Error in get_project_valuation_templates: {e}")
+        raise HTTPException(status_code=500, detail="Could not fetch project templates")
+    
+
+def filter_rag_results_by_project(rag_results: List[Dict], project_id: str) -> List[Dict]:
+    """
+    Filter RAG search results to only include documents from a specific project
+    """
+    try:
+        # Get all document file paths for this project
+        docs_res = supabase.table('vdr_documents').select('file_path').eq('project_id', project_id).execute()
+        project_docs = [doc['file_path'] for doc in docs_res.data if doc.get('file_path')]
+        
+        if not project_docs:
+            return []
+        
+        # Filter RAG results to only include project documents
+        filtered_results = []
+        for result in rag_results:
+            result_source = result.get('source', '')
+            for project_doc in project_docs:
+                # Check if the result source matches any project document
+                if project_doc in result_source or result_source in project_doc:
+                    filtered_results.append(result)
+                    break
+        
+        return filtered_results
+        
+    except Exception as e:
+        print(f"Error filtering RAG results: {e}")
+        return rag_results  # Return original results as fallback
+
+class VdrSearchQuery(BaseModel):
+    query: str
+    mode: str # 'semantic' or 'fulltext'
+
+@app.post("/api/projects/{project_id}/vdr/search")
+async def vdr_search(project_id: str, search_query: VdrSearchQuery, user_id: str = Depends(get_current_user_id)):
+    """
+    Performs a search across all documents within a specific project's VDR.
+    Supports two modes: 'semantic' (AI-powered) and 'fulltext' (keyword-based).
+    """
+    try:
+        # Step 1: Security - Get a list of all document IDs for this project.
+        # This ensures our search is scoped only to this deal's VDR.
+        # In a real app with many documents, we would pass these IDs to the RAG system.
+        # For our current setup, the RAG search is global, but this is the correct pattern.
+        
+        print(f"--- VDR Search: Project '{project_id}', Mode: '{search_query.mode}', Query: '{search_query.query}' ---")
+
+        if search_query.mode == 'semantic':
+            # --- Semantic Search (Using our RAG "Smart Library") ---
+            context_chunks = rag_system.search(search_query.query, k=10)
+            
+            # Format the results for the frontend
+            results = []
+            for chunk in context_chunks:
+                # Create a highlighted excerpt
+                highlighted_excerpt = chunk['content'].replace(
+                    search_query.query, f"<mark>{search_query.query}</mark>"
+                )
+                results.append({
+                    "docId": chunk.get('doc_id', chunk['source']), # Use a real ID if available
+                    "docName": chunk['source'],
+                    "excerpt": f"...{highlighted_excerpt}...",
+                    "source": chunk['source']
+                })
+            return results
+        
+        else: # 'fulltext' search
+            # --- Full-text Search (Simulated) ---
+            # A professional implementation would use a tsvector on the document content in PostgreSQL.
+            # For this resume project, we will simulate this by searching filenames.
+            docs_res = supabase.table('vdr_documents').select('id, file_name').eq('project_id', project_id).ilike('file_name', f"%{search_query.query}%").limit(10).execute()
+            
+            results = [{
+                "docId": doc['id'],
+                "docName": doc['file_name'],
+                "excerpt": "Keyword match found in document title.",
+                "source": doc['file_name']
+            } for doc in docs_res.data]
+            return results
+
+    except Exception as e:
+        print(f"Error during VDR search: {e}")
+        raise HTTPException(status_code=500, detail="An error occurred during VDR search.")

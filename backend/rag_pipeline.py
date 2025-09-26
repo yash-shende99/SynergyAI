@@ -53,6 +53,7 @@ class RAGSystem:
             print(f"Error during RAG search: {e}")
             return []
 
+    
 # Create a single, global instance of our RAG system
 # This ensures the models are only loaded once when the server starts.
 rag_system = RAGSystem()
