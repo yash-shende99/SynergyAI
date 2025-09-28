@@ -1,6 +1,127 @@
 // types/index.ts
 import { LucideIcon } from 'lucide-react';
 
+
+export interface ProjectSummary {
+  executiveSummary: string; // The main narrative
+  keyStrengths: string[];   // A bulleted list of strengths
+  keyRisks: string[];       // A bulleted list of risks
+  keyData: {
+    revenue: number;
+    ebitdaMargin: number;
+    roe: number;
+  };
+}
+
+
+export interface IndustryUpdate {
+  id: string;
+  title: string;
+  source: string;
+  timestamp: string;
+  url?: string;
+}
+
+export interface IndustryIntelligenceData {
+  sector: string;
+  subSector: string;
+  marketTrends: string; // AI-generated narrative
+  industryNews: IndustryUpdate[];
+  regulatoryUpdates: IndustryUpdate[];
+  competitorActivity: IndustryUpdate[];
+}
+
+
+export interface MarketIndicator {
+  name: string;
+  value: string;
+  change: string;
+  isPositive: boolean;
+}
+
+export interface SectorTrend {
+  sector: string;
+  trend: string; // AI-generated summary
+}
+
+export interface MarketMover {
+  name: string;
+  logoUrl: string;
+  changePercent: number;
+}
+
+export interface MarketIntelligenceData {
+  indicators: MarketIndicator[];
+  sectorTrends: SectorTrend[];
+  topGainers: MarketMover[];
+  topLosers: MarketMover[];
+}
+
+
+export interface AiRecommendation {
+  company: Company;
+  triggerEvent: {
+    type: string;
+    summary: string;
+  };
+  aiThesis: {
+    headline: string;
+    rationale: string;
+  };
+}
+
+export type NewsPriority = 'Critical' | 'High' | 'Medium' | 'Low';
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  source: string;
+  timestamp: string;
+  url: string;
+  companyName: string;
+  priority: 'Critical' | 'High' | 'Medium' | 'Low';
+  projectId?: string;
+  isLive?: boolean;
+  dealRelevance?: number;
+}
+
+export interface NewsResponse {
+  market_news: NewsItem[];
+  project_news: NewsItem[];
+  last_updated: string;
+}
+
+
+export interface ProjectInsight {
+  headline: string;
+  rationale: string;
+  recommendation: string; // e.g., "Update Valuation Model"
+}
+
+export interface ProjectIntelligenceData {
+  projectNews: NewsItem[];
+  competitorNews: NewsItem[];
+  aiRecommendations: ProjectInsight[];
+}
+
+export interface VdrSource {
+  docId: string;
+  docName: string;
+  excerpt: string;
+}
+
+export interface VdrChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  sources?: VdrSource[];
+}
+
+// This new type represents the full conversation object from our database
+export interface VdrConversation {
+  id: string | null; // The ID can be null for a new, unsaved chat
+  messages: VdrChatMessage[];
+}
+
 export interface VdrSearchResult {
   docId: string;
   docName: string;
@@ -447,3 +568,4 @@ export const featureConfig: Record<FeatureKey, { title: string; subFeatures: Sub
     ]
   },
 };
+

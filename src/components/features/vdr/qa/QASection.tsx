@@ -1,26 +1,37 @@
 'use client';
 
-import { useState } from 'react';
+import { FC } from 'react';
+// --- THIS IS THE FIX: We import the necessary types from React ---
+import React from 'react'; 
+import { VdrConversation, VdrSource } from '../../../../types';
 import ChatPanel from './ChatPanel';
 import SourceDocumentViewer from './SourceDocumentViewer';
 
-export default function QASection() {
-  const [activeSource, setActiveSource] = useState({
-    docName: 'Master Service Agreement.docx',
-    excerpt: '...upon a change of control, the acquirer must provide written notice...',
-  });
+interface QASectionProps {
+  projectId: string;
+  conversation: VdrConversation | null;
+  // This is the correct, professional type for a state setter function
+  setConversation: React.Dispatch<React.SetStateAction<VdrConversation | null>>;
+  activeSource: VdrSource | null;
+  setActiveSource: (source: VdrSource | null) => void;
+}
 
+const QASection: FC<QASectionProps> = ({ projectId, conversation, setConversation, activeSource, setActiveSource }) => {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
-      {/* Left Panel: Chat Interface */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[80vh]">
       <div>
-        <ChatPanel onSourceClick={setActiveSource} />
+        <ChatPanel 
+          projectId={projectId}
+          conversation={conversation}
+          setConversation={setConversation}
+          onSourceClick={setActiveSource} 
+        />
       </div>
-
-      {/* Right Panel: Source Document Viewer */}
       <div>
         <SourceDocumentViewer source={activeSource} />
       </div>
     </div>
   );
-}
+};
+
+export default QASection;

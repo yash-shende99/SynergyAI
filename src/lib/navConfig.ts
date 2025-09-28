@@ -1,11 +1,11 @@
 import { NavItem, FeatureConfig } from '../types';
-import { LayoutDashboard, Lightbulb, Search, MessageCircle, BookOpen, Users, Bell, Settings, Rocket, ShieldCheck, BarChart, Calculator, FileText, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Lightbulb, Search, MessageCircle, BookOpen, Users, Bell, Settings, Rocket, ShieldCheck, BarChart, Calculator, FileText, ClipboardList, Newspaper } from 'lucide-react';
 
 // --- DEFINITIVE SIDEBAR NAVIGATION ---
 
 export const globalNavItems: NavItem[] = [
   { id: 'dashboard', name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { id: 'recommendations', name: 'AI Recommendations', href: '/dashboard/recommendations', icon: Lightbulb },
+  { id: 'intelligence', name: 'Intelligence', href: '/dashboard/intelligence', icon: Lightbulb },
   { id: 'sourcing', name: 'Deal Sourcing', href: '/dashboard/sourcing', icon: Search },
   { id: 'chat', name: 'Global AI Co-Pilot', href: '/dashboard/chat', icon: MessageCircle },
   { id: 'library', name: 'Knowledge Library', href: '/dashboard/knowledge-library', icon: BookOpen },
@@ -15,11 +15,12 @@ export const globalNavItems: NavItem[] = [
 // Update projectNavItems to have proper base paths
 export const projectNavItems: NavItem[] = [
   { id: 'mission-control', name: 'Mission Control', href: '', icon: Rocket },
+  { id: 'insights', name: 'Project Insights', href: '/insights', icon: Lightbulb },
   { id: 'vdr', name: 'Project VDR', href: '/vdr', icon: ShieldCheck },
+  { id: 'chat', name: 'Project AI Co-Pilot', href: '/chat', icon: MessageCircle },
   { id: 'analytics', name: 'Analytics & Risk', href: '/analytics', icon: BarChart },
   { id: 'valuation', name: 'Valuation', href: '/valuation', icon: Calculator },
   { id: 'reports', name: 'Reports', href: '/reports', icon: FileText },
-  { id: 'chat', name: 'Project AI Co-Pilot', href: '/chat', icon: MessageCircle },
   { id: 'team', name: 'Team & Permissions', href: '/team', icon: Users }
 ];
 
@@ -31,15 +32,17 @@ export const featureConfig: Record<string, FeatureConfig> = {
     subFeatures: [
       { name: 'Pipeline', href: '/dashboard' }, 
       { name: 'AI Summary', href: '/dashboard/summary' },
-      { name: 'Next Actions', href: '/project/actions' }
+      { name: 'Next Actions', href: '/dashboard/actions' }
     ]
   },
-  'recommendations': {
-    title: 'AI Recommendations',
+   
+  'intelligence': {
+    title: 'Intelligence',
     subFeatures: [
-      { name: 'Suggested Companies', href: '/dashboard/recommendations' },
-      { name: 'Screening Filters', href: '/dashboard/recommendations/filters' },
-      { name: 'Saved Picks', href: '/dashboard/recommendations/saved' },
+      { name: 'News Dashboard', href: '/dashboard/intelligence' },
+      { name: 'AI Recommendations', href: '/dashboard/intelligence/recommendations' },
+      { name: 'Market Intelligence', href: '/dashboard/intelligence/market' },
+      { name: 'Saved Picks', href: '/dashboard/intelligence/saved' },
     ],
   },
   'sourcing': { 
@@ -101,9 +104,19 @@ export const featureConfig: Record<string, FeatureConfig> = {
     title: 'Mission Control',
     subFeatures: [
       { name: 'Overview', href: '/project' },
-      { name: 'AI Summary', href: '/project/summary' },
-      { name: 'Key Risks', href: '/project/risks' },
-      { name: 'Next Actions', href: '/project/actions' },
+      { name: 'AI Summary', href: '/summary' },
+      { name: 'Key Risks', href: '/risks' },
+      { name: 'Next Actions', href: '/actions' },
+    ],
+  },
+  'insights': {
+    title: 'Project Insights & News',
+    subFeatures: [
+      { name: 'Project News', href: '/insights/news' },
+      { name: 'AI Recommendations', href: '/insights' },
+      { name: 'Competitor News', href: '/insights/competitors' },
+      { name: 'Industry Updates', href: '/insights/industry' },
+      { name: 'Risk Alerts', href: '/insights/alerts' },
     ],
   },
   'vdr': { 
@@ -169,7 +182,46 @@ export const findActiveFeature = (pathname: string, navItems: NavItem[], baseHre
   return bestMatch || { ...navItems[0], href: `${baseHref}${navItems[0].href}` };
 };
 
-// Export the original sub-feature objects for backward compatibility
+// --- NEWS CONFIGURATION ---
+export const newsConfig = {
+  global: {
+    tabs: [
+      { id: 'all-news', name: 'All Projects News', description: 'News across all your projects' },
+      { id: 'latest', name: 'Top Market News', description: 'Latest industry and market updates' },
+      { id: 'ai-recommendations', name: 'AI Recommendations', description: 'Personalized deal suggestions' },
+      { id: 'saved', name: 'Saved News', description: 'Bookmarked articles and alerts' },
+    ],
+    filters: [
+      'All Projects',
+      'By Industry',
+      'By Region',
+      'Last 24h',
+      'Last Week',
+      'Critical Alerts'
+    ]
+  },
+  
+  project: {
+    tabs: [
+      { id: 'project-news', name: 'Project News', description: 'News specific to this project' },
+      { id: 'competitors', name: 'Competitor News', description: 'Competitor updates and analysis' },
+      { id: 'industry', name: 'Industry News', description: 'Relevant industry developments' },
+      { id: 'ai-recommendations', name: 'AI Recommendations', description: 'Project-specific insights' },
+      { id: 'alerts', name: 'Risk Alerts', description: 'Project risk notifications' },
+    ],
+    filters: [
+      'All News',
+      'Financial',
+      'Legal',
+      'Market',
+      'Regulatory',
+      'Last 7 days',
+      'High Priority'
+    ]
+  }
+};
+
+// --- UPDATED SUB-FEATURES FOR BACKWARD COMPATIBILITY ---
 export const globalSubFeatures = {
   dashboard: {
     title: 'Dashboard',
@@ -179,12 +231,13 @@ export const globalSubFeatures = {
       { name: 'AI Insights', href: '/dashboard/insights' },
     ],
   },
-  recommendations: {
-    title: 'AI Recommendations',
+  intelligence: { // FIXED: Changed from 'recommendations' to 'intelligence'
+    title: 'Intelligence',
     subFeatures: [
-      { name: 'Suggested Companies', href: '/dashboard/recommendations' },
-      { name: 'Screening Filters', href: '/dashboard/recommendations/filters' },
-      { name: 'Saved Picks', href: '/dashboard/recommendations/saved' },
+      { name: 'News Dashboard', href: '/dashboard/intelligence' },
+      { name: 'AI Recommendations', href: '/dashboard/intelligence/recommendations' },
+      { name: 'Market Intelligence', href: '/dashboard/intelligence/market' },
+      { name: 'Saved Picks', href: '/dashboard/intelligence/saved' },
     ],
   },
   sourcing: {
@@ -254,59 +307,69 @@ export const projectSubFeatures = {
       { name: 'Next Actions', href: '/project/actions' },
     ],
   },
+  insights: {
+    title: 'Project Insights & News',
+    subFeatures: [
+      { name: 'Project News', href: '/insights/news' },
+      { name: 'AI Recommendations', href: '/insights' },
+      { name: 'Competitor News', href: '/insights/competitors' },
+      { name: 'Industry Updates', href: '/insights/industry' },
+      { name: 'Risk Alerts', href: '/insights/alerts' },
+    ],
+  },
   vdr: {
     title: 'Virtual Data Room',
     subFeatures: [
-      { name: 'Upload', href: '/project/vdr' },
-      { name: 'Categories', href: '/project/vdr/categories' },
-      { name: 'Search', href: '/project/vdr/search' },
-      { name: 'Annotations', href: '/project/vdr/annotations' },
-      { name: 'Q&A', href: '/project/vdr/qa' },
+      { name: 'Upload', href: '/vdr' },
+      { name: 'Categories', href: '/vdr/categories' },
+      { name: 'Search', href: '/vdr/search' },
+      { name: 'Annotations', href: '/vdr/annotations' },
+      { name: 'Q&A', href: '/vdr/qa' },
     ],
   },
   chat: {
     title: 'AI Co-Pilot',
     subFeatures: [
-      { name: 'Ask', href: '/project/chat' },
-      { name: 'History', href: '/project/chat/history' },
-      { name: 'Suggested Questions', href: '/project/chat/suggestions' },
-      { name: 'Knowledge Retrieval', href: '/project/chat/knowledge' },
+      { name: 'Ask', href: '/chat' },
+      { name: 'History', href: '/chat/history' },
+      { name: 'Suggested Questions', href: '/chat/suggestions' },
+      { name: 'Knowledge Retrieval', href: '/chat/knowledge' },
     ],
   },
   analytics: {
     title: 'Analytics & Risk',
     subFeatures: [
-      { name: 'Risk Score', href: '/project/analytics' },
-      { name: 'Synergy Score', href: '/project/analytics/synergy' },
-      { name: 'Knowledge Graph', href: '/project/analytics/graph' },
-      { name: 'Alerts', href: '/project/analytics/alerts' },
+      { name: 'Risk Score', href: '/analytics' },
+      { name: 'Synergy Score', href: '/analytics/synergy' },
+      { name: 'Knowledge Graph', href: '/analytics/graph' },
+      { name: 'Alerts', href: '/analytics/alerts' },
     ],
   },
   valuation: {
     title: 'Valuation & Models',
     subFeatures: [
-      { name: 'Templates', href: '/project/valuation' },
-      { name: 'Live Models', href: '/project/valuation/models' },
-      { name: 'Scenarios', href: '/project/valuation/scenarios' },
-      { name: 'Monte Carlo', href: '/project/valuation/mc' },
-      { name: 'Synergies', href: '/project/valuation/synergies' },
+      { name: 'Templates', href: '/valuation' },
+      { name: 'Live Models', href: '/valuation/models' },
+      { name: 'Scenarios', href: '/valuation/scenarios' },
+      { name: 'Monte Carlo', href: '/valuation/mc' },
+      { name: 'Synergies', href: '/valuation/synergies' },
     ],
   },
   reports: {
     title: 'Reports & Memos',
     subFeatures: [
-      { name: 'Drafts', href: '/project/reports' },
-      { name: 'Templates', href: '/project/reports/templates' },
-      { name: 'Export', href: '/project/reports/export' },
-      { name: 'One-Click Memo', href: '/project/reports/generate' },
+      { name: 'Drafts', href: '/reports' },
+      { name: 'Templates', href: '/reports/templates' },
+      { name: 'Export', href: '/reports/export' },
+      { name: 'One-Click Memo', href: '/reports/generate' },
     ],
   },
   team: {
     title: 'Team & Permissions',
     subFeatures: [
-      { name: 'Members', href: '/project/team' },
-      { name: 'Roles', href: '/project/team/roles' },
-      { name: 'Invitations', href: '/project/team/invite' },
+      { name: 'Members', href: '/team' },
+      { name: 'Roles', href: '/team/roles' },
+      { name: 'Invitations', href: '/team/invite' },
     ],
   },
   notifications: {
