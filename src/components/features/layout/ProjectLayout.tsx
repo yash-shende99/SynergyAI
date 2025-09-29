@@ -4,6 +4,7 @@ import { usePathname, useParams } from 'next/navigation';
 import ProjectSidebar from './ProjectSidebar';
 import FeatureHeader from './FeatureHeader';
 import { featureConfig, projectNavItems, findActiveFeature } from '../../../lib/navConfig';
+import {Bell, Settings} from 'lucide-react';
 
 export default function ProjectLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -13,13 +14,13 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
   
   // Fix: Use the correct base path without duplication
   const baseHref = `/dashboard/project/${projectId}`;
-  const activeFeature = findActiveFeature(pathname, projectNavItems, baseHref);
-  const config = featureConfig[activeFeature.id] || {};
-
-  // Debug: Log the paths to see what's happening
-  console.log('Pathname:', pathname);
-  console.log('BaseHref:', baseHref);
-  console.log('SubFeatures:', config.subFeatures);
+const extendedProjectNavItems = [
+    ...projectNavItems,
+    { id: 'notifications', name: 'Notifications', href: '/notifications', icon: Bell },
+    { id: 'settings', name: 'Project Settings', href: '/settings', icon: Settings }
+  ];
+  
+  const activeFeature = findActiveFeature(pathname, extendedProjectNavItems, baseHref);  const config = featureConfig[activeFeature.id] || {};
 
   return (
     <div className="flex h-screen bg-background text-white overflow-hidden font-sans p-4">

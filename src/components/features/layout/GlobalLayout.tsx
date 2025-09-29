@@ -5,13 +5,20 @@ import GlobalSidebar from './GlobalSidebar';
 import FeatureHeader from './FeatureHeader';
 import { featureConfig, findActiveFeature, globalNavItems } from '../../../lib/navConfig';
 import { useWatchlistStore } from '../../../store/watchlistStore';
+import {Bell, Settings} from 'lucide-react';
 
 export default function GlobalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const activeFeature = findActiveFeature(pathname, globalNavItems);
+  const completeNavItems = [
+    ...globalNavItems,
+    { id: 'notifications', name: 'Notifications', href: '/dashboard/notifications', icon: Bell },
+    { id: 'settings', name: 'Settings', href: '/dashboard/settings', icon: Settings }
+  ];
+  
+  const activeFeature = findActiveFeature(pathname, completeNavItems);
   const config = featureConfig[activeFeature.id] || {};
-
+  
   // Initialize watchlists
   useState(() => {
     useWatchlistStore.getState().initializeWatchlists();

@@ -1,6 +1,36 @@
 // types/index.ts
 import { LucideIcon } from 'lucide-react';
 
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  avatar_url?: string;
+}
+
+export interface ProjectUserProfile extends UserProfile {
+  project_role: string;
+}
+
+export interface Invitation {
+  id: string;
+  invited_email: string;
+  role: 'Editor' | 'Viewer';
+  status: 'Pending' | 'Accepted' | 'Revoked';
+  created_at: string;
+}
+export interface Permission {
+  feature: string; // e.g., "VDR", "Valuation Models"
+  access: 'Full' | 'Edit' | 'View Only' | 'None';
+}
+
+export interface Role {
+  name: 'Admin' | 'Editor' | 'Viewer';
+  description: string;
+  permissions: Permission[];
+}
+
+
 
 export interface ProjectSummary {
   executiveSummary: string; // The main narrative

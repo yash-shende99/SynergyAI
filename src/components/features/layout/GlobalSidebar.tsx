@@ -1,9 +1,10 @@
 'use client';
-import { FC } from 'react';
+import { FC, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { globalNavItems } from '../../../lib/navConfig';
 import { Bell, Settings, LogOut, X } from 'lucide-react';
 import synergyLogo from '@/app/../../public/synergy-logo.png';
+import { supabase } from '../../../lib/supabaseClient';
 
 interface GlobalSidebarProps {
   activeFeatureId: string;
@@ -11,12 +12,108 @@ interface GlobalSidebarProps {
   onClose: () => void;
 }
 
+interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  avatar_url?: string;
+}
+
+const useUserProfile = () => {
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('🔍 Session data:', session);
+        
+        if (!session) {
+          console.log('❌ No session found');
+          setLoading(false);
+          return;
+        }
+
+        // Call the FastAPI backend with proper error handling
+        const response = await fetch('http://localhost:8000/api/user/profile', {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include' // Important for cookies if using them
+        });
+        
+        console.log('🔍 Profile response status:', response.status);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ Profile data received:', data);
+          setUserProfile(data);
+        } else {
+          console.error('❌ Failed to fetch user profile:', response.status, response.statusText);
+          // Try to get more error details
+          try {
+            const errorData = await response.json();
+            console.error('Error details:', errorData);
+          } catch (e) {
+            const errorText = await response.text();
+            console.error('Error text:', errorText);
+          }
+          
+          // Set fallback user data
+          setUserProfile({
+            id: session.user.id,
+            name: session.user.user_metadata?.full_name || 'User',
+            email: session.user.email || 'user@email.com'
+          });
+        }
+      } catch (error) {
+        console.error('❌ Network error fetching user profile:', error);
+        // Set basic fallback data
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          setUserProfile({
+            id: session.user.id,
+            name: session.user.user_metadata?.full_name || 'User',
+            email: session.user.email || 'user@email.com'
+          });
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
+
+  return { userProfile, loading };
+};
+
 const GlobalSidebar: FC<GlobalSidebarProps> = ({ activeFeatureId, isOpen, onClose }) => {
+  const { userProfile, loading } = useUserProfile();
   
   // Filter out notifications and settings from main nav since they're in the bottom section
   const mainNavItems = globalNavItems.filter(item => 
     item.id !== 'notifications' && item.id !== 'settings'
   );
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    // Optional: redirect to login page after logout
+    window.location.href = '/login';
+  };
+
+  // Get user initials for avatar fallback
+  const getUserInitials = () => {
+    if (!userProfile?.name) return 'US';
+    return userProfile.name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   return (
     <>
@@ -80,16 +177,28 @@ const GlobalSidebar: FC<GlobalSidebarProps> = ({ activeFeatureId, isOpen, onClos
           <div className="p-2 mt-2 border-t border-border/50">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-                <span className="text-sm font-medium text-white">YS</span>
+                {userProfile ? (
+                  <span className="text-sm font-medium text-white">
+                    {getUserInitials()}
+                  </span>
+                ) : (
+                  <span className="text-sm font-medium text-white">US</span>
+                )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white truncate">Yash Shende</p>
-                <p className="text-xs text-secondary truncate">yash@synergy.ai</p>
+                <p className="text-sm font-semibold text-white truncate">
+                  {loading ? 'Loading...' : userProfile?.name || 'User'}
+                </p>
+                <p className="text-xs text-secondary truncate">
+                  {loading ? 'loading...' : userProfile?.email || 'user@email.com'}
+                </p>
               </div>
-              <button className="p-1 text-secondary hover:text-white">
-                <Settings size={16} />
-              </button>
-              <button className="p-1 text-secondary hover:text-white">
+              
+              <button 
+                className="p-1 text-secondary hover:text-white transition-colors"
+                onClick={handleLogout}
+                title="Logout"
+              >
                 <LogOut size={16} />
               </button>
             </div>

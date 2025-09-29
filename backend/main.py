@@ -738,77 +738,58 @@ class ProjectCreate(BaseModel):
     name: str
     company_cin: str
     team_emails: List[str]
+
+async def get_current_user_id(request: Request) -> str:
+    token = request.headers.get("Authorization", "").split(" ")[-1]
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        user_res = supabase.auth.get_user(token)
+        if user_res.user:
+            return user_res.user.id
+        else:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
 @app.get("/api/projects", response_model=List[Dict])
 async def get_projects(user_id: str = Depends(get_current_user_id)):
     """
-    Fetches all projects the current user is a member of.
+    Fetches all projects the current user is a member of by calling our
+    powerful and efficient database function.
     """
     try:
-        # Verify the user exists and is authenticated
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Not authenticated")
-        
-        # We now call our smart database function via RPC
         result = supabase.rpc('get_user_projects', {'p_user_id': user_id}).execute()
-        
-        if hasattr(result, 'error') and result.error:
-            raise HTTPException(status_code=500, detail=result.error.message)
-            
-        return result.data
-    except HTTPException:
-        raise
+        return result.data if result.data else []
     except Exception as e:
         print(f"Error fetching projects: {e}")
         raise HTTPException(status_code=500, detail="Could not fetch projects.")
-    
+
 @app.post("/api/projects")
 async def create_project(project_data: ProjectCreate, user_id: str = Depends(get_current_user_id)):
     """
     Creates a new project by calling our powerful and safe database function.
+    This is now a single, atomic, and secure operation.
     """
     try:
-        print(f"Creating project: {project_data.name}, company: {project_data.company_cin}")
-        
-        # Use a simpler approach if the RPC function has issues
-        # Insert project directly
-        project_result = supabase.table('projects').insert({
-            'name': project_data.name,
-            'company_cin': project_data.company_cin
+        # --- THIS IS THE DEFINITIVE FIX ---
+        # The Python code now correctly calls the smart function from your Canvas.
+        result = supabase.rpc('create_project_and_add_members', {
+            'p_name': project_data.name,
+            'p_company_cin': project_data.company_cin,
+            'p_creator_id': user_id,
+            'p_team_emails': project_data.team_emails
         }).execute()
         
-        if not project_result.data:
-            raise Exception("Failed to create project")
-            
-        project_id = project_result.data[0]['id']
-        
-        # Add creator as admin
-        supabase.table('project_members').insert({
-            'project_id': project_id,
-            'user_id': user_id,
-            'role': 'Admin'
-        }).execute()
-        
-        # Add team members
-        for email in project_data.team_emails:
-            # Get user by email
-            user_result = supabase.table('users').select('id').eq('email', email).execute()
-            if user_result.data and len(user_result.data) > 0:
-                member_id = user_result.data[0]['id']
-                supabase.table('project_members').insert({
-                    'project_id': project_id,
-                    'user_id': member_id,
-                    'role': 'Editor'
-                }).execute()
-        
-        return {
-            "message": f"Project '{project_data.name}' created successfully.", 
-            "project_id": project_id
-        }
+        if result.data:
+            return {"message": f"Project '{project_data.name}' created successfully.", "project_id": result.data}
+        else:
+            raise Exception("Database function did not return a project ID.")
             
     except Exception as e:
         print(f"Error creating project: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    
+        raise HTTPException(status_code=500, detail=f"Could not create project: {e}")
+
 @app.get("/api/dashboard/chart_data")
 async def get_chart_data(user_id: str = Depends(get_current_user_id)):
     try:
@@ -2468,3 +2449,347 @@ Response (JSON object only):
         print(f"Error generating project AI summary: {e}")
         raise HTTPException(status_code=500, detail="Could not generate project AI summary.")
 
+
+class TeamInvite(BaseModel):
+    email: str
+    role: str # 'Editor' or 'Viewer'
+
+async def get_project_member_auth(project_id: str, user_id: str = Depends(get_current_user_id)):
+    """
+    Verifies that the current user is a member of the project (Admin or Editor).
+    This is used for read-only operations.
+    """
+    try:
+        res = supabase.table('project_members').select('role').eq('project_id', project_id).eq('user_id', user_id).single().execute()
+        if not res.data: # If the user is not in the table for this project
+            raise HTTPException(status_code=403, detail="Forbidden: User is not a member of this project.")
+        return user_id # Success
+    except Exception:
+        raise HTTPException(status_code=403, detail="Forbidden: Could not verify project membership.")
+
+# This is the original, strict security check for WRITING data
+async def get_project_admin_auth(project_id: str, user_id: str = Depends(get_current_user_id)):
+    """
+    Verifies that the current user is an ADMIN of the project.
+    This is used for write operations like inviting or revoking.
+    """
+    try:
+        res = supabase.table('project_members').select('role').eq('project_id', project_id).eq('user_id', user_id).single().execute()
+        if not res.data or res.data['role'] != 'Admin':
+            raise HTTPException(status_code=403, detail="Forbidden: User is not an admin of this project.")
+        return user_id # Success
+    except Exception:
+        raise HTTPException(status_code=403, detail="Forbidden: Could not verify project permissions.")
+
+
+@app.get("/api/projects/{project_id}/team", response_model=List[Dict])
+async def get_project_team(project_id: str, user_id: str = Depends(get_project_member_auth)): # Now uses member auth
+    """Fetches all team members for a specific project."""
+    try:
+        result = supabase.rpc('get_project_team_members', {'p_project_id': project_id}).execute()
+        return result.data if result.data else []
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Could not fetch team members.")
+
+@app.get("/api/projects/{project_id}/invitations")
+async def get_project_invitations(project_id: str, user_id: str = Depends(get_project_member_auth)): # <-- FIX #2: Uses the new, less strict check
+    """Fetches all pending invitations for a specific project. Accessible by any team member."""
+    try:
+        result = supabase.table('project_invitations').select('*').eq('project_id', project_id).eq('status', 'Pending').order('created_at').execute()
+        return result.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Could not fetch invitations.")
+
+@app.post("/api/projects/{project_id}/team/invite")
+async def invite_team_member(project_id: str, invite_data: TeamInvite, admin_id: str = Depends(get_project_admin_auth)): # <-- Correctly uses strict check
+    """Invites a new member. Only callable by a project admin."""
+    try:
+        # Find the user to invite by their email
+        user_res = supabase.table('users').select('id').eq('email', invite_data.email).single().execute()
+        if not user_res.data:
+            raise HTTPException(status_code=404, detail=f"User with email '{invite_data.email}' not found.")
+        
+        member_id = user_res.data['id']
+
+        # Add the user to the project_members table
+        supabase.table('project_members').insert({
+            'project_id': project_id,
+            'user_id': member_id,
+            'role': invite_data.role
+        }).execute()
+
+        return {"message": f"User {invite_data.email} invited successfully."}
+    except Exception as e:
+        # This handles cases where the user is already on the team (violates primary key)
+        if "duplicate key" in str(e):
+            raise HTTPException(status_code=409, detail="User is already a member of this project.")
+        raise HTTPException(status_code=500, detail="Could not invite team member.")
+
+@app.get("/api/projects/{project_id}/roles")
+async def get_project_roles(project_id: str, user_id: str = Depends(get_current_user_id)):
+    """
+    Returns the defined roles and their specific permissions for the project.
+    For this professional demo, we serve a detailed, hardcoded configuration.
+    """
+    try:
+        # In a real enterprise app, this would be read from a database table.
+        # For our resume project, providing this rich, structured data from the API
+        # is a professional and impressive approach.
+        roles_config = [
+            {
+                "name": "Admin",
+                "description": "Full control over the project, including managing team members and project settings.",
+                "permissions": [
+                    {"feature": "VDR Documents", "access": "Full"},
+                    {"feature": "Analytics & Risk", "access": "Full"},
+                    {"feature": "Valuation Models", "access": "Full"},
+                    {"feature": "Reports & Memos", "access": "Full"},
+                    {"feature": "Team Management", "access": "Full"}
+                ]
+            },
+            {
+                "name": "Editor",
+                "description": "Can create and edit content within the project, but cannot manage team members.",
+                "permissions": [
+                    {"feature": "VDR Documents", "access": "Edit"},
+                    {"feature": "Analytics & Risk", "access": "View Only"},
+                    {"feature": "Valuation Models", "access": "Edit"},
+                    {"feature": "Reports & Memos", "access": "Edit"},
+                    {"feature": "Team Management", "access": "None"}
+                ]
+            },
+            {
+                "name": "Viewer",
+                "description": "Can only view existing content within the project. Cannot upload, edit, or delete.",
+                "permissions": [
+                    {"feature": "VDR Documents", "access": "View Only"},
+                    {"feature": "Analytics & Risk", "access": "View Only"},
+                    {"feature": "Valuation Models", "access": "View Only"},
+                    {"feature": "Reports & Memos", "access": "View Only"},
+                    {"feature": "Team Management", "access": "None"}
+                ]
+            }
+        ]
+        return roles_config
+
+    except Exception as e:
+        print(f"Error fetching roles: {e}")
+        raise HTTPException(status_code=500, detail="Could not fetch role permissions.")
+
+
+class TeamInvite(BaseModel):
+    email: str
+    role: str # 'Editor' or 'Viewer'
+
+# A dependency to check if the current user is an admin of the project
+async def get_project_admin_auth(project_id: str, user_id: str = Depends(get_current_user_id)):
+    try:
+        res = supabase.table('project_members').select('role').eq('project_id', project_id).eq('user_id', user_id).single().execute()
+        if not res.data or res.data['role'] != 'Admin':
+            raise HTTPException(status_code=403, detail="Forbidden: User is not an admin of this project.")
+        return user_id
+    except Exception:
+        raise HTTPException(status_code=403, detail="Forbidden: Could not verify project permissions.")
+
+@app.get("/api/projects/{project_id}/team", response_model=List[Dict])
+async def get_project_team(project_id: str, user_id: str = Depends(get_current_user_id)):
+    """Fetches all team members for a specific project."""
+    try:
+        result = supabase.rpc('get_project_team_members', {'p_project_id': project_id}).execute()
+        return result.data if result.data else []
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Could not fetch team members.")
+
+@app.post("/api/projects/{project_id}/team/invite")
+async def invite_team_member(project_id: str, invite_data: TeamInvite, admin_id: str = Depends(get_project_admin_auth)):
+    """Invites a new member and creates a record in the invitations table."""
+    try:
+        # This now creates an invitation record instead of directly adding a member.
+        result = supabase.table('project_invitations').insert({
+            'project_id': project_id,
+            'invited_by_user_id': admin_id,
+            'invited_email': invite_data.email,
+            'role': invite_data.role
+        }).execute()
+        
+        # In a real app, this would also trigger the invitation email.
+        return {"message": f"Invitation sent to {invite_data.email} successfully."}
+    except Exception as e:
+        if "duplicate key" in str(e):
+            raise HTTPException(status_code=409, detail="An invitation for this email is already pending.")
+        raise HTTPException(status_code=500, detail="Could not send invitation.")
+
+@app.get("/api/projects/{project_id}/invitations")
+async def get_project_invitations(project_id: str, admin_id: str = Depends(get_project_admin_auth)):
+    """Fetches all pending invitations for a specific project. Admin only."""
+    try:
+        result = supabase.table('project_invitations').select('*').eq('project_id', project_id).eq('status', 'Pending').order('created_at').execute()
+        return result.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Could not fetch invitations.")
+
+@app.post("/api/invitations/{invitation_id}/resend")
+async def resend_invitation(invitation_id: str, admin_id: str = Depends(get_project_admin_auth)):
+    """Simulates resending an invitation. Admin only."""
+    print(f"Resending invitation {invitation_id}")
+    return {"message": "Invitation resent successfully."}
+
+
+@app.delete("/api/invitations/{invitation_id}")
+async def revoke_invitation(invitation_id: str, admin_id: str = Depends(get_project_admin_auth)): # <-- Correctly uses strict check
+    """Revokes a pending invitation. Admin only."""
+    try:
+        # Instead of deleting, we update the status to 'Revoked' to maintain an audit trail.
+        result = supabase.table('project_invitations').update({'status': 'Revoked'}).eq('id', invitation_id).execute()
+        return {"message": "Invitation revoked successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Could not revoke invitation.")
+
+
+# Add these endpoints to your FastAPI backend
+class UserProfileResponse(BaseModel):
+    id: str
+    name: str
+    email: str
+    avatar_url: Optional[str] = None
+
+class ProjectUserProfileResponse(BaseModel):
+    id: str
+    name: str
+    email: str
+    project_role: str
+    avatar_url: Optional[str] = None
+
+# Add these endpoints to your existing FastAPI app
+@app.get("/api/user/profile", response_model=UserProfileResponse)
+async def get_user_profile(user_id: str = Depends(get_current_user_id)):
+    """
+    Get current user's profile data for global sidebar
+    """
+    try:
+        print(f"🔍 Fetching user profile for user_id: {user_id}")
+        
+        # First, let's check what columns actually exist in the users table
+        # Get user data from public.users table - only request columns that exist
+        result = supabase.table('users').select('id, name, email').eq('id', user_id).execute()
+        print(f"🔍 Users table result: {result}")
+        
+        if result.data and len(result.data) > 0:
+            user_data = result.data[0]
+            print(f"🔍 User data from database: {user_data}")
+            
+            return UserProfileResponse(
+                id=user_data.get('id', user_id),
+                name=user_data.get('name', 'User'),
+                email=user_data.get('email', 'user@email.com'),
+                avatar_url=None  # This column doesn't exist, so set to None
+            )
+        else:
+            # If no user record found in public.users table, check auth metadata
+            print("⚠️ No user record found in public.users table, checking auth...")
+            try:
+                # Get auth header to fetch user from auth
+                from fastapi import Request
+                # We'll need to modify the function signature to include request
+                # For now, let's just return basic data
+                return UserProfileResponse(
+                    id=user_id,
+                    name="User", 
+                    email="user@email.com",
+                    avatar_url=None
+                )
+            except Exception as auth_error:
+                print(f"❌ Auth fallback failed: {auth_error}")
+                return UserProfileResponse(
+                    id=user_id,
+                    name="User",
+                    email="user@email.com",
+                    avatar_url=None
+                )
+        
+    except Exception as e:
+        print(f"❌ Error fetching user profile: {e}")
+        # Fallback response
+        return UserProfileResponse(
+            id=user_id,
+            name="User",
+            email="user@email.com",
+            avatar_url=None
+        )
+    
+@app.get("/api/projects/{project_id}/user-profile", response_model=ProjectUserProfileResponse)
+async def get_project_user_profile(
+    project_id: str, 
+    user_id: str = Depends(get_current_user_id)
+):
+    """
+    Get current user's profile with project-specific role for project sidebar
+    """
+    try:
+        print(f"🔍 Fetching project user profile for user_id: {user_id}, project_id: {project_id}")
+        
+        # Get user profile data (without avatar_url since it doesn't exist)
+        user_result = supabase.table('users').select('name, email').eq('id', user_id).execute()
+        profile_data = user_result.data[0] if user_result.data else {}
+        
+        # Get project role
+        try:
+            role_result = supabase.rpc('get_user_project_role', {
+                'p_user_id': user_id,
+                'p_project_id': project_id
+            }).execute()
+            
+            print(f"🔍 Role result: {role_result}")
+            
+            project_role = "Member"  # Default role
+            
+            if role_result.data and len(role_result.data) > 0:
+                project_role = role_result.data[0].get('role', 'Member')
+        except Exception as role_error:
+            print(f"⚠️ Role fetch error, using default: {role_error}")
+            project_role = "Member"
+        
+        # Get name from available sources
+        name = (
+            profile_data.get('name') or 
+            "User"  # Fallback since we can't access auth metadata without token
+        )
+        
+        email = profile_data.get('email') or "user@email.com"
+        
+        print(f"🔍 Final project profile - Name: {name}, Email: {email}, Role: {project_role}")
+        
+        return ProjectUserProfileResponse(
+            id=user_id,
+            name=name,
+            email=email,
+            project_role=project_role,
+            avatar_url=None  # Set to None since column doesn't exist
+        )
+        
+    except Exception as e:
+        print(f"❌ Error fetching project user profile: {e}")
+        # Fallback to basic data
+        try:
+            # Try to get basic user data from users table
+            user_result = supabase.table('users').select('name, email').eq('id', user_id).execute()
+            if user_result.data:
+                user_data = user_result.data[0]
+                return ProjectUserProfileResponse(
+                    id=user_id,
+                    name=user_data.get('name', 'User'),
+                    email=user_data.get('email', 'user@email.com'),
+                    project_role="Member",
+                    avatar_url=None
+                )
+        except:
+            pass
+        
+        # Ultimate fallback
+        return ProjectUserProfileResponse(
+            id=user_id,
+            name="User",
+            email="user@email.com",
+            project_role="Member",
+            avatar_url=None
+        )

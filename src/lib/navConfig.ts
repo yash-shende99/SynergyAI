@@ -165,6 +165,25 @@ export const featureConfig: Record<string, FeatureConfig> = {
       { name: 'Invitations', href: '/team/invite' },
     ],
   },
+  'project-notifications': {
+    title: 'Project Notifications',
+    subFeatures: [
+      { name: 'All', href: '/notifications' },
+      { name: 'Deal Updates', href: '/notifications/deals' },
+      { name: 'Risk Alerts', href: '/notifications/risks' },
+      { name: 'Comments', href: '/notifications/comments' },
+      { name: 'System', href: '/notifications/system' },
+    ],
+  },
+  'project-settings': {
+    title: 'Project Settings',
+    subFeatures: [
+      { name: 'Project Info', href: '/settings' },
+      { name: 'Security', href: '/settings/security' },
+      { name: 'Team Access', href: '/settings/team' },
+      { name: 'Integrations', href: '/settings/integrations' },
+    ],
+  },
 };
 
 // --- DEFINITIVE HELPER FUNCTIONS ---
@@ -372,14 +391,23 @@ export const projectSubFeatures = {
       { name: 'Invitations', href: '/team/invite' },
     ],
   },
-  notifications: {
-    title: 'Notifications',
+  'project-notifications': {
+    title: 'Project Notifications',
     subFeatures: [
-      { name: 'All', href: '/project/notifications' },
-      { name: 'Deal Updates', href: '/project/notifications/deals' },
-      { name: 'Risk Alerts', href: '/project/notifications/risks' },
-      { name: 'Comments', href: '/project/notifications/comments' },
-      { name: 'System', href: '/project/notifications/system' },
+      { name: 'All', href: '/notifications' },
+      { name: 'Deal Updates', href: '/notifications/deals' },
+      { name: 'Risk Alerts', href: '/notifications/risks' },
+      { name: 'Comments', href: '/notifications/comments' },
+      { name: 'System', href: '/notifications/system' },
+    ],
+  },
+  'project-settings': {
+    title: 'Project Settings',
+    subFeatures: [
+      { name: 'Project Info', href: '/settings' },
+      { name: 'Security', href: '/settings/security' },
+      { name: 'Team Access', href: '/settings/team' },
+      { name: 'Integrations', href: '/settings/integrations' },
     ],
   },
   settings: {

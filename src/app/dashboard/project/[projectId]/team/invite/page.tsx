@@ -1,36 +1,33 @@
-// app/dashboard/project/[projectId]/team/page.tsx
+// app/dashboard/project/[projectId]/team/invite/page.tsx
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { TeamMember } from '../../../../../types';
+import { Invitation } from '../../../../../../types';
 import { Loader2, AlertTriangle } from 'lucide-react';
-import { supabase } from '../../../../../lib/supabaseClient';
-import TeamManagementSection from '../../../../../components/features/team/members/TeamManagementSection';
+import { supabase } from '../../../../../../lib/supabaseClient';
+import InvitationsSection from '../../../../../../components/features/team/invitations/InvitationsSection';
 
-export default function TeamPage() {
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+export default function InvitationsPage() {
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const params = useParams();
   const projectId = params.projectId as string;
 
-  const fetchTeam = useCallback(async () => {
+  const fetchInvitations = useCallback(async () => {
     if (!projectId) return;
     setIsLoading(true);
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { setIsLoading(false); return; }
     
     try {
-      const response = await fetch(`http://localhost:8000/api/projects/${projectId}/team`, {
+      const response = await fetch(`http://localhost:8000/api/projects/${projectId}/invitations`, {
         headers: { 'Authorization': `Bearer ${session.access_token}` }
       });
-      if (!response.ok) {
-          const err = await response.json();
-          throw new Error(err.detail || "Failed to fetch team members");
-      }
+      if (!response.ok) throw new Error("Failed to fetch invitations.");
       const data = await response.json();
-      setTeamMembers(data);
+      setInvitations(data);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -39,8 +36,8 @@ export default function TeamPage() {
   }, [projectId]);
 
   useEffect(() => {
-    fetchTeam();
-  }, [fetchTeam]);
+    fetchInvitations();
+  }, [fetchInvitations]);
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>;
@@ -51,10 +48,9 @@ export default function TeamPage() {
   }
 
   return (
-    <TeamManagementSection 
-      teamMembers={teamMembers}
-      projectId={projectId}
-      onTeamChange={fetchTeam} // Pass the refresh function
+    <InvitationsSection 
+      invitations={invitations}
+      onInvitationChange={fetchInvitations} // Pass the refresh function
     />
   );
 }
