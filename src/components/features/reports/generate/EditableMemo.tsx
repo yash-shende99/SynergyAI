@@ -1,73 +1,155 @@
 'use client';
 
-import { useState } from 'react';
-import {Button} from '../../../ui/button';
-import { Edit, Check, X } from 'lucide-react';
+import { FC, useState } from 'react';
+import { Button } from '../../../ui/button';
+import { Edit, Check, X, Save, FileText, History } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
-// Mock content for the memo
-const initialSummaryContent = "The proposed acquisition of SolarTech Inc. presents a compelling strategic opportunity. The deal offers significant revenue synergy potential by cross-selling our existing products to their customer base. While the valuation appears fair, the primary risks are concentrated in the legal domain due to unverified IP for a core patent.";
+interface EditableMemoProps {
+  initialContent: string;
+  sectionTitle?: string;
+}
 
-const EditableMemo = () => {
-  // State to manage the editing mode
+const EditableMemo: FC<EditableMemoProps> = ({ 
+  initialContent, 
+  sectionTitle = "Executive Summary" 
+}) => {
   const [isEditing, setIsEditing] = useState(false);
-  // State to hold the final, saved content
-  const [content, setContent] = useState(initialSummaryContent);
-  // State to hold the temporary content while editing
+  const [content, setContent] = useState(initialContent);
   const [tempContent, setTempContent] = useState(content);
-
-  const handleEdit = () => {
-    setTempContent(content); // Sync temp content before editing
-    setIsEditing(true);
-  };
+  const [versionHistory, setVersionHistory] = useState([initialContent]);
 
   const handleSave = () => {
-    setContent(tempContent); // Save the changes
+    setContent(tempContent);
+    setVersionHistory(prev => [...prev, tempContent]);
     setIsEditing(false);
   };
 
   const handleCancel = () => {
-    // Discard changes by simply exiting edit mode
+    setTempContent(content);
+    setIsEditing(false);
+  };
+
+  const handleRestoreVersion = (versionContent: string) => {
+    setContent(versionContent);
+    setTempContent(versionContent);
     setIsEditing(false);
   };
 
   return (
-    <div className="p-8 rounded-xl border border-border bg-surface/80 h-full overflow-y-auto">
-      <div className="prose prose-invert max-w-none">
-        
-        {/* --- EXECUTIVE SUMMARY SECTION (NOW FULLY INTERACTIVE) --- */}
-        <div className="flex justify-between items-center mb-2">
-          <h2>Executive Summary</h2>
-          {isEditing ? (
-            <div className="flex items-center gap-2">
-              <Button onClick={handleCancel} variant="secondary" size="sm">
-                <X size={16} className="mr-2"/>Cancel
-              </Button>
-              <Button onClick={handleSave} variant="default" size="sm">
-                <Check size={16} className="mr-2"/>Save
-              </Button>
-            </div>
-          ) : (
-            <Button onClick={handleEdit} variant="ghost" size="sm">
-              <Edit size={16} className="mr-2"/>Edit
-            </Button>
-          )}
+    <div className="p-6 rounded-xl border border-border bg-surface/80 h-full">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center gap-3">
+          <FileText size={20} className="text-primary" />
+          <div>
+            <h2 className="text-xl font-semibold text-white">{sectionTitle}</h2>
+            <p className="text-sm text-secondary">AI-generated analysis - edit as needed</p>
+          </div>
         </div>
         
         {isEditing ? (
-          <textarea
-            value={tempContent}
-            onChange={(e) => setTempContent(e.target.value)}
-            className="w-full h-40 p-3 bg-background/50 border border-primary rounded-md text-slate-300 focus:outline-none focus:ring-1 focus:ring-primary"
-          />
+          <div className="flex items-center gap-2">
+            <Button 
+              onClick={handleCancel} 
+              variant="secondary" 
+              size="sm"
+              className="gap-2"
+            >
+              <X size={16} />
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSave} 
+              variant="default" 
+              size="sm"
+              className="gap-2"
+            >
+              <Check size={16} />
+              Save Changes
+            </Button>
+          </div>
         ) : (
-          <p className="text-secondary">{content}</p>
+          <div className="flex items-center gap-2">
+            <Button 
+              onClick={() => {
+                setTempContent(content);
+                setIsEditing(true);
+              }} 
+              variant="ghost" 
+              size="sm"
+              className="gap-2"
+            >
+              <Edit size={16} />
+              Edit Section
+            </Button>
+          </div>
         )}
-        
-        {/* --- OTHER SECTIONS (PLACEHOLDERS) --- */}
-        <h2 className="mt-8">Valuation Summary</h2>
-        <div className="p-3 my-2 rounded-lg bg-background/50 border border-border/50">Valuation Potential: $45M - $60M (Sweet Spot $52M)</div>
-        <p className="text-secondary">[More content for other sections would go here, each with its own edit functionality.]</p>
       </div>
+
+      {/* Content Area */}
+      <div className="mb-6">
+        {isEditing ? (
+          <div className="space-y-4">
+            <textarea 
+              value={tempContent} 
+              onChange={(e) => setTempContent(e.target.value)} 
+              className="w-full h-64 p-4 bg-background/50 border border-primary/30 rounded-lg text-white placeholder-gray-400 focus:border-primary focus:ring-1 focus:ring-primary transition-colors resize-none"
+              placeholder="Write your analysis here..."
+            />
+            <div className="flex justify-between items-center text-sm text-secondary">
+              <span>{tempContent.length} characters</span>
+              <span>Markdown supported</span>
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 rounded-lg bg-background/30 border border-border">
+            <div className="prose prose-invert max-w-none">
+              <ReactMarkdown
+                components={{
+                  // Customize markdown components if needed
+                  p: ({children}) => <p className="text-secondary leading-relaxed mb-4">{children}</p>,
+                  strong: ({children}) => <strong className="text-white font-semibold">{children}</strong>,
+                  h1: ({children}) => <h1 className="text-2xl font-bold text-white mb-4">{children}</h1>,
+                  h2: ({children}) => <h2 className="text-xl font-bold text-white mb-3">{children}</h2>,
+                  h3: ({children}) => <h3 className="text-lg font-bold text-white mb-2">{children}</h3>,
+                  ul: ({children}) => <ul className="list-disc list-inside mb-4 text-secondary">{children}</ul>,
+                  ol: ({children}) => <ol className="list-decimal list-inside mb-4 text-secondary">{children}</ol>,
+                  li: ({children}) => <li className="mb-1">{children}</li>,
+                }}
+              >
+                {content}
+              </ReactMarkdown>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Version History */}
+      {!isEditing && versionHistory.length > 1 && (
+        <div className="border-t border-border pt-4">
+          <details className="group">
+            <summary className="flex items-center gap-2 text-sm text-secondary hover:text-white cursor-pointer list-none">
+              <History size={16} />
+              <span>Version History ({versionHistory.length})</span>
+            </summary>
+            <div className="mt-3 space-y-2 max-h-32 overflow-y-auto">
+              {versionHistory.slice().reverse().map((version, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleRestoreVersion(version)}
+                  className="w-full text-left p-2 text-xs rounded hover:bg-surface/50 transition-colors text-secondary hover:text-white"
+                >
+                  <div className="flex justify-between">
+                    <span>Version {versionHistory.length - index}</span>
+                    <span>{version.length} chars</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </details>
+        </div>
+      )}
     </div>
   );
 };

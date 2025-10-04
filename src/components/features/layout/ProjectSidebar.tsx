@@ -74,7 +74,7 @@ const ProjectSidebar: FC<ProjectSidebarProps> = ({ projectId, activeFeatureId, i
 
   // Filter out notifications and settings from main nav since they're in the bottom section
   const mainNavItems = projectNavItems.filter(item =>
-    item.id !== 'notifications' && item.id !== 'settings'
+    item.id !== 'project-notifications' && item.id !== 'project-settings'
   );
 
   const handleLogout = async () => {
@@ -136,7 +136,7 @@ const ProjectSidebar: FC<ProjectSidebarProps> = ({ projectId, activeFeatureId, i
         {/* Bottom Section - Only Notifications and Settings */}
         <div className="p-2 border-t bg-secondarySurface rounded-b-3xl border-border">
           {/* Notifications */}
-          <Link href={`/dashboard/project/${projectId}/notifications`}>
+          <Link href={`/dashboard/project/${projectId}/project-notifications`}>
             <button className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeFeatureId === 'project-notifications'
               ? 'bg-primary/20 text-primary'
               : 'text-secondary hover:bg-surface'
@@ -147,7 +147,7 @@ const ProjectSidebar: FC<ProjectSidebarProps> = ({ projectId, activeFeatureId, i
           </Link>
 
           {/* Settings */}
-          <Link href={`/dashboard/project/${projectId}/settings`}>
+          <Link href={`/dashboard/project/${projectId}/project-settings`}>
             <button className={`w-full flex items-center gap-3 px-3 py-2 mt-1 rounded-md text-sm font-medium transition-colors ${activeFeatureId === 'project-settings'
               ? 'bg-primary/20 text-primary'
               : 'text-secondary hover:bg-surface'

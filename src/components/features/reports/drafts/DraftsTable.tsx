@@ -1,7 +1,7 @@
 import { FC } from 'react';
 import { Draft } from '../../../../types';
 import StatusBadge from './StatusBadge';
-import { MoreHorizontal, Edit, Copy, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Edit, Copy, Trash2, User } from 'lucide-react';
 
 interface DraftsTableProps {
   drafts: Draft[];
@@ -15,8 +15,11 @@ const DraftsTable: FC<DraftsTableProps> = ({ drafts, onOpen, onDelete, onDuplica
     <table className="w-full text-left text-sm">
       <thead className="border-b border-border bg-surface/50 text-xs text-secondary uppercase">
         <tr>
-          <th className="p-3">Title</th><th className="p-3">Created By</th>
-          <th className="p-3">Last Modified</th><th className="p-3">Status</th><th className="p-3"></th>
+          <th className="p-3">Title</th>
+          <th className="p-3">Created By</th>
+          <th className="p-3">Last Modified</th>
+          <th className="p-3">Status</th>
+          <th className="p-3"></th>
         </tr>
       </thead>
       <tbody>
@@ -25,7 +28,18 @@ const DraftsTable: FC<DraftsTableProps> = ({ drafts, onOpen, onDelete, onDuplica
             <td className="p-3 font-medium text-white">{draft.title}</td>
             <td className="p-3 text-slate-300">
               <div className="flex items-center gap-2">
-                <img src={draft.createdBy.avatarUrl} alt={draft.createdBy.name} className="h-6 w-6 rounded-full"/>
+                {/* Fixed: Check for empty avatarUrl and show fallback */}
+                {draft.createdBy.avatarUrl ? (
+                  <img 
+                    src={draft.createdBy.avatarUrl} 
+                    alt={draft.createdBy.name} 
+                    className="h-6 w-6 rounded-full"
+                  />
+                ) : (
+                  <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center">
+                    <User size={14} className="text-primary" />
+                  </div>
+                )}
                 <span>{draft.createdBy.name}</span>
               </div>
             </td>

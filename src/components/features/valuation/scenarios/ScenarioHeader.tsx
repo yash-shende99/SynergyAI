@@ -1,34 +1,107 @@
-import { FC } from 'react';
-import {Button} from '../../../ui/button';
+import { FC, useState } from 'react';
 import { Scenario } from '../../../../types';
-import { Save, RotateCcw, ArrowLeft } from 'lucide-react';
+import {Button} from '../../../ui/button';
+import { Save, RotateCcw, ArrowLeft, Edit, Check, X } from 'lucide-react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
 
 interface ScenarioHeaderProps {
   scenario: Scenario;
   onSave: () => void;
   onReset: () => void;
+  onNameChange: (name: string) => void;
+  isSaving?: boolean;
 }
-const ScenarioHeader: FC<ScenarioHeaderProps> = ({ scenario, onSave, onReset }) => {
+
+const ScenarioHeader: FC<ScenarioHeaderProps> = ({ 
+  scenario, 
+  onSave, 
+  onReset, 
+  onNameChange,
+  isSaving = false
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(scenario.name);
+
+  const handleSaveName = () => {
+    onNameChange(editName);
+    setIsEditing(false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditName(scenario.name);
+    setIsEditing(false);
+  };
+
   return (
-    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-      <div>
-        <Link href="/dashboard/project/${projectId}/valuation/scenarios" className="flex items-center gap-2 text-sm text-secondary hover:text-white mb-2">
-            <ArrowLeft size={16}/> Back to Scenarios
-        </Link>
-        <h2 className="text-2xl font-bold text-white">Scenario Analysis</h2>
-        <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-bold text-white">{scenario.name}</h2>
-            <select className="bg-surface border border-border rounded-md px-2 py-1 text-sm">
-                <option>{scenario.projectName}</option>
-                <option>Project Neptune</option>
-            </select>
+    <div>
+      <Link 
+        href={`/dashboard/project/${scenario.projectId}/valuation/scenarios`} 
+        className="flex items-center gap-2 text-sm text-secondary hover:text-white mb-2"
+      >
+        <ArrowLeft size={16}/> Back to Scenarios
+      </Link>
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          {isEditing ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="text-2xl font-bold text-white bg-transparent border-b border-primary focus:outline-none focus:border-primary-300"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveName();
+                  if (e.key === 'Escape') handleCancelEdit();
+                }}
+              />
+              <button 
+                onClick={handleSaveName}
+                className="text-green-400 hover:text-green-300"
+              >
+                <Check size={16} />
+              </button>
+              <button 
+                onClick={handleCancelEdit}
+                className="text-red-400 hover:text-red-300"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <h2 className="text-2xl font-bold text-white">{scenario.name}</h2>
+              <button 
+                onClick={() => setIsEditing(true)}
+                className="text-secondary hover:text-primary"
+              >
+                <Edit size={16} />
+              </button>
+            </div>
+          )}
+          <span className="text-sm text-secondary bg-surface px-2 py-1 rounded">
+            {scenario.projectName}
+          </span>
         </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <Button onClick={onReset} variant="secondary" size="sm"><RotateCcw size={16} className="mr-2"/>Reset</Button>
-      <Button onClick={onSave} variant="default" size="sm"><Save size={16} className="mr-2"/>Save Scenario</Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={onReset} variant="secondary" size="sm" disabled={isSaving}>
+            <RotateCcw size={16} className="mr-2"/>
+            Reset
+          </Button>
+          <Button onClick={onSave} variant="default" size="sm" disabled={isSaving}>
+            {isSaving ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save size={16} className="mr-2"/>
+                Save
+              </>
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );

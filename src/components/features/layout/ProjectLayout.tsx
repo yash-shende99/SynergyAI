@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { usePathname, useParams } from 'next/navigation';
 import ProjectSidebar from './ProjectSidebar';
 import FeatureHeader from './FeatureHeader';
-import { featureConfig, projectNavItems, findActiveFeature } from '../../../lib/navConfig';
+import { featureConfig, projectNavItems, findProjectActiveFeature } from '../../../lib/navConfig';
 import {Bell, Settings} from 'lucide-react';
 
 export default function ProjectLayout({ children }: { children: React.ReactNode }) {
@@ -16,12 +16,16 @@ export default function ProjectLayout({ children }: { children: React.ReactNode 
   const baseHref = `/dashboard/project/${projectId}`;
 const extendedProjectNavItems = [
     ...projectNavItems,
-    { id: 'notifications', name: 'Notifications', href: '/notifications', icon: Bell },
-    { id: 'settings', name: 'Project Settings', href: '/settings', icon: Settings }
+    { id: 'notifications', name: 'Notifications', href: '/project-notifications', icon: Bell },
+    { id: 'settings', name: 'Project Settings', href: '/project-settings', icon: Settings }
   ];
   
-  const activeFeature = findActiveFeature(pathname, extendedProjectNavItems, baseHref);  const config = featureConfig[activeFeature.id] || {};
+const activeFeature = findProjectActiveFeature(pathname, projectId);
+  const config = featureConfig[activeFeature.id] || {};
 
+  console.log('ProjectLayout - Pathname:', pathname);
+  console.log('ProjectLayout - Active Feature:', activeFeature);
+  console.log('ProjectLayout - Config:', config);
   return (
     <div className="flex h-screen bg-background text-white overflow-hidden font-sans p-4">
       <ProjectSidebar 

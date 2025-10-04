@@ -1,8 +1,19 @@
+// components/features/insights/Recommendations/RecommendationsPanel.tsx
 import { FC } from 'react';
-import { ProjectInsight } from '../../../types';
+import { ProjectInsight } from '../../../../types';
 import { Lightbulb, Zap, ArrowRight } from 'lucide-react';
 
-const AiRecommendationsPanel: FC<{ recommendations: ProjectInsight[] }> = ({ recommendations }) => (
+interface RecommendationsPanelProps {
+  recommendations: ProjectInsight[];
+}
+
+const RecommendationsPanel: FC<RecommendationsPanelProps> = ({ recommendations }) => (
+  <div className="space-y-6">
+    <div className="mb-6">
+      <h1 className="text-2xl font-bold text-white mb-2">AI Recommendations</h1>
+      <p className="text-secondary">Strategic insights and recommendations powered by AI</p>
+    </div>
+
     <div className="space-y-4">
       <div className="flex items-center gap-3 p-2">
         <Lightbulb className="h-6 w-6 text-primary"/>
@@ -11,6 +22,7 @@ const AiRecommendationsPanel: FC<{ recommendations: ProjectInsight[] }> = ({ rec
           <p className="text-sm text-secondary">Proactive insights based on the latest news for this project.</p>
         </div>
       </div>
+      
       {recommendations.map((rec, index) => (
         <div key={index} className="p-4 rounded-lg bg-surface/50 border border-border">
           <div className="flex items-center gap-2 text-amber-400 font-semibold text-sm mb-2">
@@ -24,7 +36,16 @@ const AiRecommendationsPanel: FC<{ recommendations: ProjectInsight[] }> = ({ rec
           </button>
         </div>
       ))}
+      
+      {recommendations.length === 0 && (
+        <div className="text-center text-secondary py-16">
+          <Lightbulb size={48} className="mx-auto mb-4 opacity-30"/>
+          <p className="font-semibold">No AI recommendations available.</p>
+          <p className="text-sm mt-1">AI insights will appear here as news is processed.</p>
+        </div>
+      )}
     </div>
+  </div>
 );
 
-export default AiRecommendationsPanel;
+export default RecommendationsPanel;

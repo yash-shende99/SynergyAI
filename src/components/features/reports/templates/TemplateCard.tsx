@@ -1,8 +1,7 @@
 import { FC } from 'react';
 import { ReportTemplate, TemplateCategory } from '../../../../types';
 import {Button} from '../../../ui/button';
-import { Eye, Plus } from 'lucide-react';
-import { FileSpreadsheet } from 'lucide-react';
+import { Eye, Plus, FileSpreadsheet } from 'lucide-react';
 
 const categoryColors: Record<TemplateCategory, string> = {
   Financial: 'bg-blue-500/30 text-blue-300',
@@ -33,9 +32,7 @@ const TemplateCard: FC<TemplateCardProps> = ({ template, onPreview, onUse }) => 
         <span className="text-xs text-secondary">By: {template.createdBy}</span>
         <div className="flex items-center gap-2">
             <Button onClick={onPreview} variant="secondary" size="sm"><Eye size={14} className="mr-1.5"/>Preview</Button>
-            <Button onClick={() => onUse(template)} variant="default" size="sm"> {/* <-- And this */}
-                <Plus size={14} className="mr-1.5"/>Use
-            </Button>
+            <Button onClick={() => onUse(template)} variant="default" size="sm"><Plus size={14} className="mr-1.5"/>Use</Button>
         </div>
       </div>
     </div>

@@ -8,7 +8,7 @@ export const globalNavItems: NavItem[] = [
   { id: 'intelligence', name: 'Intelligence', href: '/dashboard/intelligence', icon: Lightbulb },
   { id: 'sourcing', name: 'Deal Sourcing', href: '/dashboard/sourcing', icon: Search },
   { id: 'chat', name: 'Global AI Co-Pilot', href: '/dashboard/chat', icon: MessageCircle },
-  { id: 'library', name: 'Knowledge Library', href: '/dashboard/knowledge-library', icon: BookOpen },
+  // { id: 'library', name: 'Knowledge Library', href: '/dashboard/knowledge-library', icon: BookOpen },
   { id: 'team-chat', name: 'Team Chat', href: '/dashboard/team-chat', icon: Users }
 ];
 
@@ -103,20 +103,19 @@ export const featureConfig: Record<string, FeatureConfig> = {
   'mission-control': {
     title: 'Mission Control',
     subFeatures: [
-      { name: 'Overview', href: '/project' },
+      { name: 'Overview', href: '/' },
       { name: 'AI Summary', href: '/summary' },
       { name: 'Key Risks', href: '/risks' },
       { name: 'Next Actions', href: '/actions' },
     ],
   },
   'insights': {
-    title: 'Project Insights & News',
+    title: 'Insights & News',
     subFeatures: [
-      { name: 'Project News', href: '/insights/news' },
-      { name: 'AI Recommendations', href: '/insights' },
+      { name: 'Project News', href: '/insights' },
+      { name: 'AI Recommendations', href: '/insights/recommendations' },
       { name: 'Competitor News', href: '/insights/competitors' },
       { name: 'Industry Updates', href: '/insights/industry' },
-      { name: 'Risk Alerts', href: '/insights/alerts' },
     ],
   },
   'vdr': { 
@@ -165,24 +164,24 @@ export const featureConfig: Record<string, FeatureConfig> = {
       { name: 'Invitations', href: '/team/invite' },
     ],
   },
-  'project-notifications': {
-    title: 'Project Notifications',
+  'project-notifications': { 
+    title: 'Project Notification Settings', 
     subFeatures: [
-      { name: 'All', href: '/notifications' },
-      { name: 'Deal Updates', href: '/notifications/deals' },
-      { name: 'Risk Alerts', href: '/notifications/risks' },
-      { name: 'Comments', href: '/notifications/comments' },
-      { name: 'System', href: '/notifications/system' },
-    ],
+      { name: 'All', href: '/project-notifications' },
+      { name: 'Deal Updates', href: '/project-notifications/deals' },
+      { name: 'Risk Alerts', href: '/project-notifications/risks' },
+      { name: 'Comments', href: '/project-notifications/comments' },
+      { name: 'System', href: '/project-notifications/system' },
+    ]
   },
-  'project-settings': {
-    title: 'Project Settings',
+  'project-settings': { 
+    title: 'Project Settings', 
     subFeatures: [
-      { name: 'Project Info', href: '/settings' },
-      { name: 'Security', href: '/settings/security' },
-      { name: 'Team Access', href: '/settings/team' },
-      { name: 'Integrations', href: '/settings/integrations' },
-    ],
+      { name: 'General', href: '/project-settings' },
+      { name: 'Access', href: '/project-settings/access' },
+      { name: 'Danger Zone', href: '/project-settings/danger' },
+      { name: 'Notifications Settings', href: '/project-settings/notifications' },
+    ]
   },
 };
 
@@ -201,6 +200,46 @@ export const findActiveFeature = (pathname: string, navItems: NavItem[], baseHre
   return bestMatch || { ...navItems[0], href: `${baseHref}${navItems[0].href}` };
 };
 
+export const findProjectActiveFeature = (pathname: string, projectId: string) => {
+  const projectBase = `/dashboard/project/${projectId}`;
+  
+  // Remove the project base to work with relative paths
+  const relativePath = pathname.replace(projectBase, '') || '/';
+  
+  const projectRoutes = {
+    '': 'mission-control',
+    '/': 'mission-control',
+    '/insights': 'insights',
+    '/vdr': 'vdr',
+    '/chat': 'chat',
+    '/analytics': 'analytics',
+    '/valuation': 'valuation',
+    '/reports': 'reports',
+    '/team': 'team',
+    '/project-notifications': 'project-notifications',
+    '/project-settings': 'project-settings'
+  };
+
+  // Find the best matching route
+  let bestMatch = 'mission-control';
+  let bestMatchLength = 0;
+
+  for (const [route, featureId] of Object.entries(projectRoutes)) {
+    if (relativePath.startsWith(route) && route.length > bestMatchLength) {
+      bestMatch = featureId;
+      bestMatchLength = route.length;
+    }
+  }
+
+  // Find the nav item for the matched feature
+  const extendedProjectNavItems = [
+    ...projectNavItems,
+    { id: 'project-notifications', name: 'Notifications', href: '/project-notifications', icon: Bell },
+    { id: 'project-settings', name: 'Project Settings', href: '/project-settings', icon: Settings }
+  ];
+
+  return extendedProjectNavItems.find(item => item.id === bestMatch) || extendedProjectNavItems[0];
+};
 // --- NEWS CONFIGURATION ---
 export const newsConfig = {
   global: {
@@ -327,13 +366,12 @@ export const projectSubFeatures = {
     ],
   },
   insights: {
-    title: 'Project Insights & News',
+    title: 'Insights & News',
     subFeatures: [
-      { name: 'Project News', href: '/insights/news' },
-      { name: 'AI Recommendations', href: '/insights' },
+      { name: 'Project News', href: '/insights' },
+      { name: 'AI Recommendations', href: '/insights/recommendations' },
       { name: 'Competitor News', href: '/insights/competitors' },
       { name: 'Industry Updates', href: '/insights/industry' },
-      { name: 'Risk Alerts', href: '/insights/alerts' },
     ],
   },
   vdr: {
@@ -391,24 +429,24 @@ export const projectSubFeatures = {
       { name: 'Invitations', href: '/team/invite' },
     ],
   },
-  'project-notifications': {
-    title: 'Project Notifications',
+  'project-notifications': { 
+    title: 'Project Notification Settings', 
     subFeatures: [
-      { name: 'All', href: '/notifications' },
-      { name: 'Deal Updates', href: '/notifications/deals' },
-      { name: 'Risk Alerts', href: '/notifications/risks' },
-      { name: 'Comments', href: '/notifications/comments' },
-      { name: 'System', href: '/notifications/system' },
-    ],
+      { name: 'All', href: '/project-notifications' },
+      { name: 'Deal Updates', href: '/project-notifications/deals' },
+      { name: 'Risk Alerts', href: '/project-notifications/risks' },
+      { name: 'Comments', href: '/project-notifications/comments' },
+      { name: 'System', href: '/project-notifications/system' },
+    ]
   },
-  'project-settings': {
-    title: 'Project Settings',
+  'project-settings': { 
+    title: 'Project Settings', 
     subFeatures: [
-      { name: 'Project Info', href: '/settings' },
-      { name: 'Security', href: '/settings/security' },
-      { name: 'Team Access', href: '/settings/team' },
-      { name: 'Integrations', href: '/settings/integrations' },
-    ],
+      { name: 'General', href: '/project-settings' },
+      { name: 'Access', href: '/project-settings/access' },
+      { name: 'Danger Zone', href: '/project-settings/danger' },
+      { name: 'Notifications Settings', href: '/project-settings/notifications' },
+    ]
   },
   settings: {
     title: 'Settings',

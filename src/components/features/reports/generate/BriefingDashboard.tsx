@@ -8,10 +8,15 @@ interface BriefingDashboardProps {
 }
 
 const BriefingDashboard: FC<BriefingDashboardProps> = ({ cards, onCardClick }) => (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {cards.map(card => (
-            <BriefingCard key={card.id} card={card} onClick={() => onCardClick(card)} />
-        ))}
-    </div>
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    {cards.map(card => (
+      <BriefingCard 
+        key={card.id} 
+        card={card} 
+        onClick={() => onCardClick(card)} 
+      />
+    ))}
+  </div>
 );
+
 export default BriefingDashboard;

@@ -1,15 +1,16 @@
 import { FC } from 'react';
 import { Scenario } from '../../../../../types';
 import Link from 'next/link';
-import { Edit, Copy, Trash2 } from 'lucide-react';
+import { Copy, Trash2 } from 'lucide-react';
 
 interface ScenarioCardProps {
   scenario: Scenario;
+  projectId: string;
   onDelete: () => void;
   onDuplicate: () => void;
 }
 
-const ScenarioCard: FC<ScenarioCardProps> = ({ scenario, onDelete, onDuplicate }) => {
+const ScenarioCard: FC<ScenarioCardProps> = ({ scenario, projectId, onDelete, onDuplicate }) => {
   return (
     <div className="rounded-2xl border border-border bg-surface/50 p-6 flex flex-col group">
       <div className="flex-1">
@@ -18,8 +19,11 @@ const ScenarioCard: FC<ScenarioCardProps> = ({ scenario, onDelete, onDuplicate }
         <p className="text-sm text-slate-300 mt-2 h-10">{scenario.summary}</p>
       </div>
       <div className="mt-4 pt-4 border-t border-border/50 flex justify-between items-center">
-        <Link href={`/dashboard/valuation/scenarios/${scenario.id}`} className="text-sm font-semibold text-primary hover:underline">
-          Edit Scenario
+        <Link 
+          href={`/dashboard/project/${projectId}/valuation/scenarios/${scenario.id}`} 
+          className="text-sm font-semibold text-primary hover:underline"
+        >
+          Open Scenario
         </Link>
         <div className="flex items-center gap-2 text-secondary">
           <button onClick={(e) => { e.stopPropagation(); onDuplicate(); }} className="hover:text-primary"><Copy size={16} /></button>

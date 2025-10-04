@@ -1,3 +1,4 @@
+// app/dashboard/project/[projectId]/insights/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -5,9 +6,9 @@ import { useParams } from 'next/navigation';
 import { ProjectIntelligenceData } from '../../../../../types';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../../../../lib/supabaseClient';
-import InsightsDashboard from '../../../../../components/features/insights/InsightsDashboard';
+import ProjectNewsPanel from '../../../../../components/features/insights/projectnews/ProjectNewsPanel';
 
-export default function ProjectInsightsPage() {
+export default function ProjectNewsPage() {
   const [intelData, setIntelData] = useState<ProjectIntelligenceData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -38,14 +39,21 @@ export default function ProjectInsightsPage() {
   }, [projectId]);
 
   if (isLoading) {
-    return <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>;
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary"/>
+      </div>
+    );
   }
 
   if (error || !intelData) {
-    return <div className="flex flex-col justify-center items-center h-full text-red-400"><AlertTriangle className="h-8 w-8 mb-2"/><p>{error || "Could not load intelligence data."}</p></div>;
+    return (
+      <div className="flex flex-col justify-center items-center h-64 text-red-400">
+        <AlertTriangle className="h-8 w-8 mb-2"/>
+        <p>{error || "Could not load intelligence data."}</p>
+      </div>
+    );
   }
 
-  return (
-    <InsightsDashboard data={intelData} />
-  );
+  return <ProjectNewsPanel news={intelData.projectNews} />;
 }

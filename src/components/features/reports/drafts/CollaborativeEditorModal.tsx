@@ -1,51 +1,90 @@
 'use client';
 
-import { FC, useState } from 'react'; // <-- 1. Import useState
-import { Draft } from '../../../../types';
+import React, { FC, useState, useCallback, useRef, useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { X, Users } from 'lucide-react';
-import {Button} from '../../../ui/button';
+import { X, Users, Save } from 'lucide-react';
+import { Button } from '../../../ui/button';
 import EditorToolbar from './EditorToolbar';
 import CommentSidebar from './CommentSidebar';
+import { useReportStore } from '../../../../store/reportStore';
 
 interface EditorModalProps {
-  draft: Draft | null;
+  draft: any;
   onClose: () => void;
 }
 
-const initialContent = `
-  <h2>Acquisition Memo: Project Helios</h2>
-  <p>This document outlines the strategic rationale and key findings for the proposed acquisition of <strong>SolarTech Inc.</strong></p>
-  <ul>
-    <li>Market Analysis</li>
-    <li>Financial Projections</li>
-    <li>Risk Assessment</li>
-  </ul>
-`;
-
 const CollaborativeEditorModal: FC<EditorModalProps> = ({ draft, onClose }) => {
-  // --- THIS IS THE FIX ---
-  // 2. We add a simple state variable whose only job is to trigger re-renders.
-  const [_, setForceUpdate] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [isEditorReady, setIsEditorReady] = useState(false);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const updateDraftContent = useReportStore((state) => state.updateDraftContent);
 
   const editor = useEditor({
-    extensions: [ StarterKit ],
-    content: initialContent,
+    extensions: [StarterKit],
+    content: draft?.content?.html || '<p>Start writing your report...</p>',
     editorProps: {
       attributes: {
-        class: 'prose prose-invert prose-sm sm:prose-base focus:outline-none max-w-none text-slate-300',
+        class: 'prose prose-invert prose-sm sm:prose-base focus:outline-none max-w-none text-slate-300 min-h-[500px]',
       },
     },
-    immediatelyRender: false,
-    
-    // 3. This is the key. Tiptap will call this function EVERY time the editor's
-    // content or selection changes. By updating our state, we force React to re-render.
-    onUpdate: () => {
-      setForceUpdate(Math.random());
+    immediatelyRender: false, // Add this line to fix SSR
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      handleAutoSave(html);
     },
   });
-  // --- END OF FIX ---
+
+  const handleAutoSave = useCallback(async (content: string) => {
+    if (!draft) return;
+    
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+    
+    autoSaveTimeoutRef.current = setTimeout(async () => {
+      setIsSaving(true);
+      try {
+        await updateDraftContent(draft.id, {
+          html: content,
+          lastUpdated: new Date().toISOString()
+        });
+        setLastSaved(new Date());
+      } catch (error) {
+        console.error('Failed to auto-save:', error);
+      } finally {
+        setIsSaving(false);
+        autoSaveTimeoutRef.current = null;
+      }
+    }, 2000);
+  }, [draft, updateDraftContent]);
+
+  const handleSave = async () => {
+    if (!editor || !draft) return;
+    
+    setIsSaving(true);
+    try {
+      await updateDraftContent(draft.id, {
+        html: editor.getHTML(),
+        lastUpdated: new Date().toISOString()
+      });
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error('Failed to save:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   if (!draft) return null;
 
@@ -54,26 +93,49 @@ const CollaborativeEditorModal: FC<EditorModalProps> = ({ draft, onClose }) => {
       <div className="w-full max-w-7xl mx-auto flex flex-col h-full">
         {/* Header */}
         <header className="flex-shrink-0 flex justify-between items-center mb-4">
-            <div>
-              <input defaultValue={draft.title} className="text-2xl font-bold text-white bg-transparent focus:outline-none focus:bg-surface/50 rounded-md px-2"/>
-            </div>
-            <div className="flex items-center gap-2">
-                <Button variant="secondary" size="sm"><Users size={16} className="mr-2"/>Share</Button>
-                <Button onClick={onClose} variant="default" size="sm">Done</Button>
-            </div>
+          <div className="flex items-center gap-4">
+            <input 
+              defaultValue={draft.title} 
+              className="text-2xl font-bold text-white bg-transparent focus:outline-none focus:bg-surface/50 rounded-md px-2"
+              onBlur={(e) => {
+                updateDraftContent(draft.id, { title: e.target.value });
+              }}
+            />
+            {isSaving && <span className="text-sm text-amber-400">Saving...</span>}
+            {lastSaved && !isSaving && (
+              <span className="text-sm text-green-400">
+                Saved {lastSaved.toLocaleTimeString()}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button 
+              onClick={handleSave} 
+              variant="secondary" 
+              size="sm"
+              disabled={isSaving}
+            >
+              <Save size={16} className="mr-2"/>
+              {isSaving ? 'Saving...' : 'Save'}
+            </Button>
+            <Button variant="secondary" size="sm">
+              <Users size={16} className="mr-2"/>Share
+            </Button>
+            <Button onClick={onClose} variant="default" size="sm">Done</Button>
+          </div>
         </header>
 
         {/* Main Workspace */}
         <div className="flex-1 flex gap-6 overflow-hidden">
-            <div className="flex-1 flex flex-col bg-surface/80 rounded-xl border border-border overflow-hidden">
-                <EditorToolbar editor={editor} />
-                <div className="flex-1 p-8 overflow-y-auto">
-                    <EditorContent editor={editor} />
-                </div>
+          <div className="flex-1 flex flex-col bg-surface/80 rounded-xl border border-border overflow-hidden">
+            <EditorToolbar editor={editor} />
+            <div className="flex-1 p-8 overflow-y-auto">
+              <EditorContent editor={editor} />
             </div>
-            <div className="w-80 flex-shrink-0">
-                <CommentSidebar />
-            </div>
+          </div>
+          <div className="w-80 flex-shrink-0">
+            <CommentSidebar />
+          </div>
         </div>
       </div>
     </div>

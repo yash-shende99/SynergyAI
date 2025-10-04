@@ -1,11 +1,218 @@
 // types/index.ts
 import { LucideIcon } from 'lucide-react';
 
-export interface UserProfile {
+
+export interface ProjectAccessSummary {
+  totalMembers: number;
+  adminCount: number;
+}
+
+export interface ProjectNotificationSettings {
+  email_frequency: 'Instantly' | 'Daily' | 'None';
+  in_app_new_document: boolean;
+  in_app_mention: boolean;
+  in_app_task_assigned: boolean;
+  ai_critical_risk: boolean; // <-- NEW
+  ai_negative_news: boolean; // <-- NEW
+  ai_valuation_change: boolean; // <-- NEW
+}
+// Add these new types to your existing types
+export interface RealMissionControlData {
+  project: EnhancedProject;
+  keyMetrics: {
+    financial: {
+      revenue: string;
+      ebitdaMargin: string;
+      valuation: string;
+      employees: string;
+    };
+    dealHealth: {
+      riskScore: string;
+      riskLevel: string;
+      synergyScore: string;
+      synergyValue: string;
+    };
+    execution: {
+      taskCompletion: string;
+      milestoneProgress: string;
+      highPriorityTasks: number;
+    };
+  };
+  aiRecommendation: {
+    recommendation: string;
+    confidence: string;
+    rationale: string;
+  };
+  nextActions: ProjectTask[];
+  upcomingMilestones: ProjectMilestone[];
+  riskIndicators: {
+    criticalEvents: number;
+    financialHealth: string;
+    dealComplexity: string;
+  };
+  lastUpdated: string;
+  dataSources: string[];
+}
+
+export interface EnhancedProject {
   id: string;
   name: string;
+  status: DealStatus;
+  companies: {
+    name: string;
+    financial_summary?: any;
+    industry?: any;
+    location?: any;
+  };
+  company_details?: {
+    name: string;
+    financial_summary: FinancialSummary;
+    industry: Industry;
+    location: Location;
+  };
+  team?: TeamMember[];
+}
+
+export interface FinancialSummary {
+  revenue_cr?: number;
+  ebitda_cr?: number;
+  net_income_cr?: number;
+  employee_count?: number;
+  ebitda_margin_pct?: number;
+}
+
+export interface Industry {
+  sector?: string;
+  sub_sector?: string;
+}
+
+export interface Location {
+  headquarters?: string;
+}
+
+export interface ProjectMilestone {
+  id: string;
+  title: string;
+  due_date: string;
+  status: string;
+  description?: string;
+}
+
+export interface ProjectTaskWithAnalytics {
+  tasks: ProjectTask[];
+  analytics: {
+    total: number;
+    completed: number;
+    completion_rate: number;
+    high_priority: number;
+  };
+}
+
+export interface MissionControlData {
+  project: Project;
+  keyMetrics: {
+    riskScore: number;
+    synergyScore: number;
+    valuationRange: string;
+    aiRecommendation: 'BUY' | 'HOLD' | 'REJECT';
+  };
+  nextActions: ProjectTask[];
+}
+
+
+export type TaskStatus = 'To Do' | 'In Progress' | 'Done';
+export type TaskPriority = 'High' | 'Medium' | 'Low';
+
+export interface ProjectTask {
+  id: string;
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  assignedTo?: {
+    name: string;
+    avatarUrl: string;
+  };
+}
+
+export interface KeyRisk {
+  category: RiskCategory;
+  severity: number; // A score from 0-100
+  risk: string;
+  mitigation: string;
+  evidence: string[]; // Excerpts from VDR documents
+}
+
+export interface BriefingCardData {
+  id: 'recommendation' | 'valuation' | 'synergy' | 'risk';
+  title: string;
+  value: string;
+  subValue: string;
+  color: string; 
+  aiInsight: string;
+}
+
+export interface InvestmentMemo {
+  projectName: string;
+  briefingCards: BriefingCardData[];
+  executiveSummary: string;
+  valuationSection: string;
+  synergySection: string;
+  riskSection: string;
+}
+// Add these to your existing types in types/index.ts
+export interface Scenario {
+  id: string;
+  name: string;
+  projectId: string; // Add projectId
+  projectName: string;
+  summary: string;
+  variables: {
+    revenueChange: number;
+    cogsChange: number;
+    taxRate: number;
+    discountRate: number;
+  }
+}
+
+export type DistributionType = 'Normal' | 'Lognormal' | 'Uniform';
+
+export interface MonteCarloVariables {
+  revenueGrowth: number;
+  ebitdaMargin: number;
+  costOfCapital: number;
+  iterations: number;
+  distribution: DistributionType;
+}
+
+export interface MonteCarloResult {
+  meanValuation: number;
+  medianValuation: number;
+  stdDeviation: number;
+  confidenceInterval90: [number, number];
+  distribution: number[];
+  aiRationale: string;
+}
+
+export interface MonteCarloSimulation {
+  id: string;
+  name: string;
+  projectId: string;
+  projectName: string;
+  summary: string;
+  variables: MonteCarloVariables;
+  results_summary?: MonteCarloResult; // Add this optional property
+  created_at?: string;
+  last_run_at?: string;
+}
+
+export interface UserProfile {
+  id: string;
+  name: string | null;
   email: string;
-  avatar_url?: string;
+  job_title: string | null;
+  contact_number: string | null;
+  avatar_url: string | null; // <-- Corrected to use snake_case
 }
 
 export interface ProjectUserProfile extends UserProfile {
@@ -370,11 +577,28 @@ export interface ReportTemplate {
   name: string;
   category: TemplateCategory;
   description: string;
-  createdBy: 'System' | 'Team' | 'Yash Shende'; // Example creators
-  sections: string[]; // For the preview modal
+  createdBy: string;
+  sections: string[];
+}
+
+// Enhanced types
+export interface ReportDraft {
+  id: string;
+  project_id: string;
+  created_by_user_id: string;
+  title: string;
+  status: 'Draft' | 'Review' | 'Final';
+  content: any;
+  created_at: string;
+  last_modified: string;
+  users?: {
+    name: string;
+    avatar_url: string;
+  };
 }
 
 export type DraftStatus = 'Draft' | 'Review' | 'Final';
+
 
 export interface Draft {
   id: string;
@@ -385,7 +609,11 @@ export interface Draft {
   };
   lastModified: string;
   status: DraftStatus;
+  projectId: string; // Add this
+  createdAt: string; // Add this
+  content?: any; // Optional content field
 }
+
 
 
 export interface SynergyProfile {
@@ -402,34 +630,7 @@ export interface SynergyProfile {
   }
 }
 
-export type DistributionType = 'Normal' | 'Lognormal' | 'Uniform';
 
-export interface MonteCarloSimulation {
-  id: string;
-  name: string;
-  projectName: string;
-  summary: string;
-  variables: {
-    revenueGrowth: number;
-    ebitdaMargin: number;
-    costOfCapital: number;
-    iterations: number;
-    distribution: DistributionType;
-  }
-}
-
-export interface Scenario {
-  id: string;
-  name: string;
-  projectName: string;
-  summary: string;
-  variables: {
-    revenueChange: number;
-    cogsChange: number;
-    taxRate: number;
-    discountRate: number;
-  }
-}
 export type AlertPriority = 'Critical' | 'High' | 'Medium' | 'Low';
 export type AlertType = 'Financial' | 'Legal' | 'Market' | 'Reputational' | 'Operational' | 'Leadership' | 'Results' | 'News';
 
@@ -454,7 +655,7 @@ export interface SynergyItem {
   confidence: 'High' | 'Medium' | 'Low';
 }
 
-export type DealStatus = 'Sourcing' | 'Diligence' | 'Negotiation' | 'Completed';
+export type DealStatus = 'Sourcing' | 'Diligence' | 'Negotiation' | 'Completed'| 'Archived';
 
 export interface Deal {
   id: string;

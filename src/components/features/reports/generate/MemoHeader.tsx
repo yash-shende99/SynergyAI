@@ -1,31 +1,44 @@
 import { FC } from 'react';
-import {Button} from '../../../ui/button';
-import { Save, Download, UserPlus, ArrowLeft } from 'lucide-react';
+import { Button } from '../../../ui/button';
+import { Download, UserPlus, ArrowLeft } from 'lucide-react';
 
 interface MemoHeaderProps {
   projectName: string;
-  onSave: () => void;
   onExport: () => void;
   onGoBack: () => void;
 }
 
-const MemoHeader: FC<MemoHeaderProps> = ({ projectName, onSave, onExport, onGoBack }) => (
-    <div>
-        {/* --- THIS IS THE NEW BACK BUTTON --- */}
-        <button 
-            onClick={onGoBack}
-            className="flex items-center gap-2 text-sm text-secondary hover:text-white mb-2"
-        >
-            <ArrowLeft size={16}/> Change Project
-        </button>
+const MemoHeader: FC<MemoHeaderProps> = ({ projectName, onExport, onGoBack }) => (
+  <div>
+    <button 
+      onClick={onGoBack}
+      className="flex items-center gap-2 text-sm text-secondary hover:text-white mb-4 transition-colors"
+    >
+      <ArrowLeft size={16} /> Back to Generation
+    </button>
+    
     <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-white">Investment Memo: <span className="text-primary">{projectName}</span></h2>
-        <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm"><UserPlus size={16} className="mr-2"/>Invite Reviewer</Button>
-            <Button onClick={onExport} variant="secondary" size="sm"><Download size={16} className="mr-2"/>Export</Button>
-            <Button onClick={onSave} variant="default" size="sm"><Save size={16} className="mr-2"/>Save to Drafts</Button>
-        </div>
+      <div>
+        <h2 className="text-2xl font-bold text-white">
+          Investment Memo: <span className="text-primary">{projectName}</span>
+        </h2>
+        <p className="text-sm text-secondary mt-1">
+          AI-generated investment analysis and recommendations
+        </p>
+      </div>
+      
+      <div className="flex items-center gap-2">
+        <Button variant="secondary" size="sm">
+          <UserPlus size={16} className="mr-2" />
+          Invite Reviewer
+        </Button>
+        <Button onClick={onExport} variant="default" size="sm">
+          <Download size={16} className="mr-2" />
+          Export
+        </Button>
+      </div>
     </div>
-    </div>
+  </div>
 );
+
 export default MemoHeader;

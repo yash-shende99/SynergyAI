@@ -13,7 +13,7 @@ const DraftsHeader: FC<DraftsHeaderProps> = ({ viewMode, onViewChange, onNewDraf
     <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
       <h2 className="text-2xl font-bold text-white">Drafts</h2>
       <div className="flex items-center gap-2">
-        <div className="relative"><Search size={16} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-secondary"/><input type="text" placeholder="Search..." className="w-32 bg-surface pl-8 p-1.5 rounded-md text-sm border border-border"/></div>
+        {/* <div className="relative"><Search size={16} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-secondary"/><input type="text" placeholder="Search..." className="w-32 bg-surface pl-8 p-1.5 rounded-md text-sm border border-border"/></div> */}
         {/* --- THIS IS THE FIX: Added Filter Dropdowns --- */}
         <select className="bg-surface border border-border rounded-md px-2 py-1.5 text-sm text-secondary"><option>All Deals</option></select>
         <select className="bg-surface border border-border rounded-md px-2 py-1.5 text-sm text-secondary"><option>All Users</option></select>

@@ -1,10 +1,13 @@
 'use client';
 
 import ScenarioGallerySection from '../../../../../../components/features/valuation/scenarios/gallery/ScenarioGallerySection';
+import { useParams } from 'next/navigation';
 
-// This page now renders the gallery of saved scenarios.
 export default function ScenariosGalleryPage() {
+  const params = useParams();
+  const projectId = params.projectId as string;
+  
   return (
-    <ScenarioGallerySection />
+    <ScenarioGallerySection projectId={projectId} />
   );
 }

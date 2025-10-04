@@ -1,39 +1,38 @@
-'use client';
-
+// components/features/notifications/NotificationFeed.tsx
 import { useMemo, FC } from 'react';
 import { Notification, NotificationType } from '../../../types';
 import NotificationCard from './NotificationCard';
-
-// This is our master list of all notifications
-const mockAllNotifications: Notification[] = [
-    { id: 'n1', type: 'Risk Alert', title: 'Critical risk: CEO Resignation at SolarTech.', timestamp: '1h ago', isRead: false, priority: 'Critical'},
-    { id: 'n2', type: 'Comment', title: 'Priya mentioned you in "MSA.docx".', timestamp: '3h ago', isRead: false },
-    { id: 'n3', type: 'Deal Update', title: 'New financials for Project Neptune.', timestamp: '5h ago', isRead: true },
-    { id: 'n4', type: 'Risk Alert', title: 'High legal risk: Competitor lawsuit.', timestamp: 'Yesterday', isRead: false, priority: 'High'},
-    { id: 'n5', type: 'System', title: 'Your export of "Valuation Report" is complete.', timestamp: 'Yesterday', isRead: true },
-    { id: 'n6', type: 'Deal Update', title: 'Project Helios moved to "Negotiation".', timestamp: 'Yesterday', isRead: true },
-];
+import { Inbox, AlertTriangle } from 'lucide-react';
 
 interface NotificationFeedProps {
-  // This prop tells the component which primary filter to apply
   filterType: NotificationType | 'All';
+  notifications: Notification[];
+  onMarkAsRead: (id: string) => void;
+  error?: string;
 }
 
-const NotificationFeed: FC<NotificationFeedProps> = ({ filterType }) => {
+const NotificationFeed: FC<NotificationFeedProps> = ({ filterType, notifications, onMarkAsRead, error }) => {
   const filteredNotifications = useMemo(() => {
-    if (filterType === 'All') return mockAllNotifications;
-    return mockAllNotifications.filter(n => n.type === filterType);
-  }, [filterType]);
+    if (filterType === 'All') return notifications;
+    return notifications.filter(n => n.type === filterType);
+  }, [filterType, notifications]);
+
+  if (error) {
+    return <div className="text-center pt-16 text-red-400"><AlertTriangle className="mx-auto mb-2"/>{error}</div>;
+  }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-2">
+    <div className="space-y-2">
       {filteredNotifications.length > 0 ? (
-        filteredNotifications.map(notif => <NotificationCard key={notif.id} notification={notif} />)
+        filteredNotifications.map(notif => 
+          <NotificationCard key={notif.id} notification={notif} onMarkAsRead={onMarkAsRead} />)
       ) : (
-        <div className="text-center pt-16 text-secondary">No notifications of this type.</div>
+        <div className="text-center pt-16 text-secondary">
+          <Inbox size={48} className="mx-auto mb-4 opacity-30"/>
+          <p className="font-semibold">No notifications of this type.</p>
+        </div>
       )}
     </div>
   );
 };
-
 export default NotificationFeed;

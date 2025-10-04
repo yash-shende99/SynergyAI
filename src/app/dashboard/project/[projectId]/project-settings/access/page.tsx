@@ -1,0 +1,50 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useParams } from 'next/navigation';
+import { ProjectAccessSummary } from '../../../../../../types';
+import { Loader2, AlertTriangle } from 'lucide-react';
+import { supabase } from '../../../../../../lib/supabaseClient';
+import AccessControlSection from '../../../../../../components/features/project-settings/access/AccessControlSection';
+
+export default function AccessSettingsPage() {
+  const [summary, setSummary] = useState<ProjectAccessSummary | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const params = useParams();
+  const projectId = params.projectId as string;
+
+  useEffect(() => {
+    async function fetchSummary() {
+      if (!projectId) return;
+      setIsLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setIsLoading(false); return; }
+      try {
+        const response = await fetch(`http://localhost:8000/api/projects/${projectId}/access_summary`, {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+        if (!response.ok) throw new Error("Failed to fetch access summary.");
+        const data = await response.json();
+        setSummary(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchSummary();
+  }, [projectId]);
+
+  if (isLoading) {
+    return <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>;
+  }
+  
+  if (error || !summary) {
+    return <div className="flex flex-col items-center justify-center h-full text-red-400"><AlertTriangle className="h-8 w-8 mb-2"/><p>{error || "Could not load access settings."}</p></div>;
+  }
+
+  return (
+    <AccessControlSection summary={summary} projectId={projectId} />
+  );
+}
