@@ -4053,7 +4053,7 @@ class NotificationSettingsUpdate(BaseModel):
     ai_critical_risk: bool
     ai_negative_news: bool
     ai_valuation_change: bool
-    
+
 @app.get("/api/projects/{project_id}/notifications/settings", response_model=Dict)
 async def get_notification_settings(project_id: str, user_id: str = Depends(get_current_user_id)):
     """
@@ -4227,3 +4227,636 @@ async def delete_project(project_id: str, confirmation: DeleteConfirmation, admi
     except Exception as e:
         print(f"Error deleting project: {e}")
         raise HTTPException(status_code=500, detail="Could not delete project.")
+
+
+# --- ANNOTATION & COMMENTING SYSTEM ---
+
+class AnnotationCreate(BaseModel):
+    document_id: str
+    highlighted_text: str
+    comment_text: str
+    page_number: Optional[int] = None  # Make sure these are optional
+    x_position: Optional[float] = None
+    y_position: Optional[float] = None
+
+class AnnotationReply(BaseModel):
+    comment_text: str
+
+class AnnotationUpdate(BaseModel):
+    resolved: Optional[bool] = None
+
+@app.get("/api/projects/{project_id}/vdr/annotated_documents", response_model=List[Dict])
+async def get_annotated_documents(project_id: str, user_id: str = Depends(get_current_user_id)):
+    """Fetches ALL documents for the project with annotation counts."""
+    try:
+        # Get all documents for the project
+        docs_result = supabase.table('vdr_documents')\
+            .select('id, file_name, uploaded_at, category')\
+            .eq('project_id', project_id)\
+            .order('uploaded_at', desc=True)\
+            .execute()
+        
+        if not docs_result.data:
+            return []
+        
+        documents_with_counts = []
+        for doc in docs_result.data:
+            # Count total annotations for this document
+            annotations_result = supabase.table('document_annotations')\
+                .select('*', count='exact')\
+                .eq('document_id', doc['id'])\
+                .execute()
+            
+            total_annotations = annotations_result.count or 0
+            
+            # Count unresolved annotations
+            unresolved_result = supabase.table('document_annotations')\
+                .select('*', count='exact')\
+                .eq('document_id', doc['id'])\
+                .eq('resolved', False)\
+                .execute()
+            
+            unresolved_count = unresolved_result.count or 0
+            
+            documents_with_counts.append({
+                "id": doc["id"],
+                "name": doc["file_name"],
+                "comment_count": total_annotations,  # Make sure this matches frontend
+                "unresolved_count": unresolved_count,  # Make sure this matches frontend
+                "uploaded_at": doc.get("uploaded_at"),
+                "category": doc.get("category", "Uncategorized")
+            })
+        
+        print(f"📊 Returning {len(documents_with_counts)} documents with counts: {documents_with_counts}")
+        return documents_with_counts
+            
+    except Exception as e:
+        print(f"Error fetching documents: {e}")
+        raise HTTPException(status_code=500, detail="Could not fetch documents.")
+    
+@app.get("/api/documents/{document_id}/annotations", response_model=List[Dict])
+async def get_document_annotations(document_id: str, user_id: str = Depends(get_current_user_id)):
+    """Fetches all annotation threads for a specific document."""
+    try:
+        # Get annotations for the document
+        result = supabase.table('document_annotations')\
+            .select('*')\
+            .eq('document_id', document_id)\
+            .order('created_at', desc=True)\
+            .execute()
+        
+        if not result.data:
+            return []
+        
+        annotations = []
+        for anno in result.data:
+            # Safely get user info with proper error handling
+            user_info = await get_user_info_safe(anno['created_by_user_id'])
+            
+            # Safely parse comment_thread
+            try:
+                comment_thread = json.loads(anno.get('comment_thread', '[]'))
+            except (json.JSONDecodeError, TypeError):
+                comment_thread = []
+            
+            annotations.append({
+                "id": anno['id'],
+                "highlightedText": anno['highlighted_text'],
+                "pageNumber": anno.get('page_number'),
+                "xPosition": anno.get('x_position'),
+                "yPosition": anno.get('y_position'),
+                "resolved": anno.get('resolved', False),
+                "createdBy": {
+                    "id": anno['created_by_user_id'],
+                    "name": user_info.get('name', 'Unknown User'),
+                    "avatarUrl": user_info.get('image')
+                },
+                "createdAt": anno['created_at'],
+                "comments": comment_thread
+            })
+        return annotations
+        
+    except Exception as e:
+        print(f"Error fetching annotations: {e}")
+        return []  # Return empty list instead of error
+async def get_user_info_safe(user_id: str) -> dict:
+    """Safely get user information with fallback values."""
+    try:
+        user_res = supabase.table('users')\
+            .select('name, image, email')\
+            .eq('id', user_id)\
+            .execute()
+        
+        if user_res.data and len(user_res.data) > 0:
+            user_data = user_res.data[0]
+            return {
+                'name': user_data.get('name') or user_data.get('email', 'Unknown User').split('@')[0],
+                'image': user_data.get('image')
+            }
+        else:
+            # Fallback: try to get from auth
+            try:
+                auth_user_res = supabase.auth.admin.get_user_by_id(user_id)
+                if auth_user_res.user:
+                    return {
+                        'name': auth_user_res.user.email.split('@')[0],
+                        'image': None
+                    }
+            except:
+                pass
+            
+            return {'name': 'Unknown User', 'image': None}
+            
+    except Exception as e:
+        print(f"Error fetching user info for {user_id}: {e}")
+        return {'name': 'Unknown User', 'image': None}
+    
+@app.post("/api/annotations/create")
+async def create_annotation(annotation_data: AnnotationCreate, user_id: str = Depends(get_current_user_id)):
+    """Creates a new annotation thread with an initial comment."""
+    try:
+        # Get user profile for the comment
+        user_res = supabase.table('users').select('name, image').eq('id', user_id).single().execute()
+        user_profile = user_res.data or {}
+
+        # Create initial comment
+        initial_comment = {
+            "id": str(uuid.uuid4()),
+            "userId": user_id,
+            "userName": user_profile.get('name', 'Anonymous'),
+            "avatarUrl": user_profile.get('image', ''),
+            "text": annotation_data.comment_text,
+            "timestamp": datetime.utcnow().isoformat(),
+            "type": "comment"
+        }
+        
+        # Get project_id for the document
+        doc_res = supabase.table('vdr_documents').select('project_id').eq('id', annotation_data.document_id).single().execute()
+        if not doc_res.data:
+            raise HTTPException(status_code=404, detail="Parent document not found.")
+
+        # Prepare annotation data (only include fields that exist)
+        annotation_data_dict = {
+            'project_id': doc_res.data['project_id'],
+            'document_id': annotation_data.document_id,
+            'created_by_user_id': user_id,
+            'highlighted_text': annotation_data.highlighted_text,
+            'comment_thread': json.dumps([initial_comment]),
+            'resolved': False
+        }
+        
+        # Only add optional fields if they are provided and exist in the table
+        if annotation_data.page_number is not None:
+            annotation_data_dict['page_number'] = annotation_data.page_number
+        if annotation_data.x_position is not None:
+            annotation_data_dict['x_position'] = annotation_data.x_position
+        if annotation_data.y_position is not None:
+            annotation_data_dict['y_position'] = annotation_data.y_position
+
+        # Create annotation record
+        result = supabase.table('document_annotations').insert(annotation_data_dict).execute()
+
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to create annotation")
+            
+        return result.data[0]
+        
+    except Exception as e:
+        print(f"Error creating annotation: {e}")
+        raise HTTPException(status_code=500, detail=f"Could not create annotation: {e}")
+    
+@app.post("/api/annotations/{annotation_id}/reply")
+async def reply_to_annotation(annotation_id: str, reply: AnnotationReply, user_id: str = Depends(get_current_user_id)):
+    """Adds a new reply to an existing annotation thread."""
+    try:
+        # Get user profile
+        user_res = supabase.table('users').select('name, image').eq('id', user_id).single().execute()
+        user_profile = user_res.data or {}
+
+        # Get current annotation
+        anno_res = supabase.table('document_annotations').select('comment_thread').eq('id', annotation_id).single().execute()
+        if not anno_res.data:
+            raise HTTPException(status_code=404, detail="Annotation not found.")
+        
+        current_thread = json.loads(anno_res.data.get('comment_thread', '[]'))
+        
+        # Create new reply
+        new_reply = {
+            "id": str(uuid.uuid4()),
+            "userId": user_id,
+            "userName": user_profile.get('name', 'Anonymous'),
+            "avatarUrl": user_profile.get('image', ''),
+            "text": reply.comment_text,
+            "timestamp": datetime.utcnow().isoformat(),
+            "type": "comment"
+        }
+        current_thread.append(new_reply)
+        
+        # Update annotation
+        result = supabase.table('document_annotations')\
+            .update({
+                'comment_thread': json.dumps(current_thread),
+                'updated_at': 'now()'
+            })\
+            .eq('id', annotation_id)\
+            .execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to add reply")
+            
+        return new_reply
+        
+    except Exception as e:
+        print(f"Error posting reply: {e}")
+        raise HTTPException(status_code=500, detail=f"Could not post reply: {e}")
+
+@app.put("/api/annotations/{annotation_id}/resolve")
+async def resolve_annotation(annotation_id: str, update_data: AnnotationUpdate, user_id: str = Depends(get_current_user_id)):
+    """Marks an annotation as resolved or unresolved."""
+    try:
+        result = supabase.table('document_annotations')\
+            .update({
+                'resolved': update_data.resolved,
+                'updated_at': 'now()'
+            })\
+            .eq('id', annotation_id)\
+            .execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Annotation not found")
+            
+        return {"message": f"Annotation {'resolved' if update_data.resolved else 'unresolved'} successfully"}
+        
+    except Exception as e:
+        print(f"Error updating annotation: {e}")
+        raise HTTPException(status_code=500, detail=f"Could not update annotation: {e}")
+
+@app.delete("/api/annotations/{annotation_id}")
+async def delete_annotation(annotation_id: str, user_id: str = Depends(get_current_user_id)):
+    """Deletes an annotation thread."""
+    try:
+        # Verify user owns the annotation or is project admin
+        anno_res = supabase.table('document_annotations').select('created_by_user_id, project_id').eq('id', annotation_id).single().execute()
+        if not anno_res.data:
+            raise HTTPException(status_code=404, detail="Annotation not found")
+            
+        # Check if user is creator or project admin
+        if anno_res.data['created_by_user_id'] != user_id:
+            # Check if user is project admin
+            admin_check = supabase.table('project_members')\
+                .select('role')\
+                .eq('project_id', anno_res.data['project_id'])\
+                .eq('user_id', user_id)\
+                .eq('role', 'Admin')\
+                .execute()
+            if not admin_check.data:
+                raise HTTPException(status_code=403, detail="Not authorized to delete this annotation")
+        
+        supabase.table('document_annotations').delete().eq('id', annotation_id).execute()
+        
+        return {"message": "Annotation deleted successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error deleting annotation: {e}")
+        raise HTTPException(status_code=500, detail=f"Could not delete annotation: {e}")
+
+# AI-powered annotation suggestions
+@app.get("/api/documents/{document_id}/ai_annotations")
+async def get_ai_annotation_suggestions(document_id: str, user_id: str = Depends(get_current_user_id)):
+    """Uses AI to suggest potential annotations for important clauses."""
+    try:
+        # Get document content for analysis
+        doc_res = supabase.table('vdr_documents').select('file_name, file_path').eq('id', document_id).single().execute()
+        if not doc_res.data:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        # Read document content (simplified - in production you'd parse the actual file)
+        document_content = f"Document: {doc_res.data['file_name']}"
+        
+        # Use RAG to find important clauses
+        rag_context = rag_system.search("important clauses legal terms risks liabilities obligations", k=5)
+        context_text = "\n\n".join([chunk['content'] for chunk in rag_context])
+        
+        prompt = f"""Instruction: Analyze this document and identify 3-5 key clauses that should be annotated for legal review. For each, provide: the exact text snippet, why it's important, and a suggested comment. Respond with JSON: {{"suggestions": [{{"text": "exact text", "importance": "high/medium", "suggestedComment": "comment"}}]}}
+
+Document Context: {document_content}
+Related Clauses: {context_text}
+
+Response:"""
+        
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(OLLAMA_SERVER_URL, json={
+                "model": CUSTOM_MODEL_NAME, 
+                "prompt": prompt, 
+                "stream": False
+            })
+            response.raise_for_status()
+            
+        ai_response = response.json().get('response', '{}')
+        suggestions = json.loads(ai_response)
+        
+        return suggestions.get('suggestions', [])
+        
+    except Exception as e:
+        print(f"Error generating AI annotations: {e}")
+        return []
+    
+@app.get("/api/documents/{document_id}/content")
+async def get_document_content(document_id: str, user_id: str = Depends(get_current_user_id)):
+    """Get the actual content of a document for viewing."""
+    try:
+        # Get document info
+        doc_res = supabase.table('vdr_documents').select('*').eq('id', document_id).single().execute()
+        if not doc_res.data:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        document = doc_res.data
+        file_path = Path(document.get('file_path'))
+        
+        # Check if file exists
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="Document file not found")
+        
+        # Return document info and content based on file type
+        file_extension = file_path.suffix.lower()
+        
+        if file_extension == '.pdf':
+            # For PDFs, we'll return a URL to download/view
+            return {
+                "type": "pdf",
+                "url": f"/api/vdr/documents/{document_id}/download",
+                "name": document.get('file_name'),
+                "pages": await get_pdf_page_count(file_path)  # Optional: get page count
+            }
+        elif file_extension in ['.txt', '.md', '.csv']:
+            # For text files, read and return content
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            return {
+                "type": "text",
+                "content": content,
+                "name": document.get('file_name')
+            }
+        elif file_extension in ['.doc', '.docx']:
+            # For Word documents, we'd need a library like python-docx
+            return {
+                "type": "doc",
+                "url": f"/api/vdr/documents/{document_id}/download",
+                "name": document.get('file_name')
+            }
+        else:
+            # For other file types, provide download link
+            return {
+                "type": "file",
+                "url": f"/api/vdr/documents/{document_id}/download", 
+                "name": document.get('file_name')
+            }
+            
+    except Exception as e:
+        print(f"Error getting document content: {e}")
+        raise HTTPException(status_code=500, detail="Could not load document content")
+
+async def get_pdf_page_count(file_path: Path) -> int:
+    """Get the number of pages in a PDF file."""
+    try:
+        import PyPDF2
+        with open(file_path, 'rb') as file:
+            pdf_reader = PyPDF2.PdfReader(file)
+            return len(pdf_reader.pages)
+    except:
+        return 1  # Default to 1 page if can't determine
+    
+
+import os
+import json
+import shutil
+import uuid
+from fastapi import FastAPI, HTTPException, Query, Depends, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from supabase import create_client, Client
+from pydantic import BaseModel, Field
+from dotenv import load_dotenv
+from typing import Optional, List, Dict
+import re
+import asyncio
+import httpx
+from pathlib import Path
+from rag_pipeline import rag_system
+from datetime import datetime
+
+# --- CONFIGURATION & SETUP ---
+# ... (all existing setup code remains the same)
+
+# --- UNIFIED SUPABASE & OLLAMA CLIENTS ---
+# ... (your existing Supabase and Ollama client initializations are correct)
+
+# --- DATA MODELS & AUTH ---
+# ... (all your existing data models and auth endpoints are correct)
+
+# --- THIS IS THE DEFINITIVE, UPGRADED, AND CORRECTED PROJECT AI CO-PILOT SECTION ---
+
+# Add to your existing FastAPI backend
+
+class ProjectChatQuery(BaseModel):
+    question: str
+    existing_messages: List[Dict]
+    chat_id: Optional[str] = None
+
+@app.get("/api/projects/{project_id}/ai_chats")
+async def get_project_ai_chats(project_id: str, user_id: str = Depends(get_current_user_id)):
+    """Fetches all AI chat conversations for a specific project."""
+    try:
+        print(f"🔍 Fetching AI chats for project: {project_id}, user: {user_id}")
+        
+        result = supabase.table('project_ai_chats').select(
+            'id, title, messages, updated_at, created_at'
+        ).eq('project_id', project_id).eq('user_id', user_id).order('updated_at', desc=True).execute()
+        
+        print(f"📊 Raw database result: {result}")
+        
+        # Parse conversations
+        conversations = []
+        for convo in result.data:
+            print(f"📝 Processing conversation: {convo}")
+            
+            # Parse the messages JSON string to object
+            try:
+                if isinstance(convo['messages'], str):
+                    messages_data = json.loads(convo['messages'])
+                else:
+                    messages_data = convo['messages']
+            except (json.JSONDecodeError, TypeError) as e:
+                print(f"❌ Error parsing messages for conversation {convo['id']}: {e}")
+                messages_data = []
+            
+            conversations.append({
+                'id': convo['id'],
+                'project_id': project_id,
+                'title': convo['title'],
+                'messages': messages_data,  # Now this is a proper list/object
+                'updated_at': convo['updated_at'],
+                'created_at': convo.get('created_at')
+            })
+        
+        print(f"✅ Returning {len(conversations)} conversations with parsed messages")
+        return conversations
+        
+    except Exception as e:
+        print(f"❌ Error fetching project AI chats: {e}")
+        return []
+
+
+@app.post("/api/projects/{project_id}/ai_chat")
+async def handle_project_ai_chat(project_id: str, query: ProjectChatQuery, user_id: str = Depends(get_current_user_id)):
+    """
+    Handles project-specific AI chat with RAG context scoped to the project's VDR.
+    """
+    try:
+        # Step 1: Get project context
+        project_res = supabase.rpc('get_user_projects', {'p_user_id': user_id}).execute()
+        project = next((p for p in project_res.data if p['id'] == project_id), None)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found or access denied.")
+
+        # Step 2: Get project-specific RAG context from VDR documents
+        docs_res = supabase.table('vdr_documents').select('file_name').eq('project_id', project_id).execute()
+        allowed_filenames = [doc['file_name'] for doc in docs_res.data]
+        
+        rag_context_chunks = []
+        if allowed_filenames:
+            rag_context_chunks = rag_system.search(
+                query.question, 
+                k=5, 
+                allowed_sources=allowed_filenames
+            )
+        
+        context_text = "No relevant context found in project documents."
+        if rag_context_chunks:
+            context_text = "\n\n---\n\n".join([chunk['content'] for chunk in rag_context_chunks])
+
+        # Step 3: Construct project-specific prompt
+        target_name = project['targetCompany']['name'] if project.get('targetCompany') else "the target company"
+        
+        prompt = f"""Instruction: You are a senior M&A analyst working specifically on the acquisition of {target_name}. Use the provided project context to answer the user's question. Be strategic, analytical, and focus on deal-specific insights.
+
+Project Context from VDR:
+{context_text}
+
+User Question: {query.question}
+
+Response:"""
+        
+        # Step 4: Call AI model
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            response = await client.post(
+                OLLAMA_SERVER_URL,
+                json={
+                    "model": CUSTOM_MODEL_NAME,
+                    "prompt": prompt,
+                    "stream": False
+                }
+            )
+            response.raise_for_status()
+        
+        ai_response = response.json()
+        final_answer = ai_response.get('response', 'Sorry, I could not generate a response.').strip()
+        
+        # Step 5: Update or create conversation
+        user_message = {"role": "user", "content": query.question}
+        assistant_message = {"role": "assistant", "content": final_answer, "sources": rag_context_chunks}
+        updated_messages = query.existing_messages + [user_message, assistant_message]
+
+        if query.chat_id and query.chat_id != 'new':
+            # Update existing conversation - store as proper JSON
+            result = supabase.table('project_ai_chats').update({
+                'messages': updated_messages,  # Direct list, not json.dumps()
+                'updated_at': 'now()'
+            }).eq('id', query.chat_id).eq('user_id', user_id).execute()
+            
+            # Return updated conversation
+            updated_convo = supabase.table('project_ai_chats').select('*').eq('id', query.chat_id).single().execute()
+            
+            # Parse messages if they're stored as string
+            if isinstance(updated_convo.data['messages'], str):
+                updated_convo.data['messages'] = json.loads(updated_convo.data['messages'])
+                
+            return updated_convo.data
+        else:
+            # Create new conversation with AI-generated title
+            title_prompt = f"Summarize this project-specific Q&A in 5 words or less: Q: {query.question} A: {final_answer}"
+            async with httpx.AsyncClient() as client:
+                title_res = await client.post(
+                    OLLAMA_SERVER_URL,
+                    json={"model": CUSTOM_MODEL_NAME, "prompt": title_prompt, "stream": False}
+                )
+            title = title_res.json().get('response', 'Project Discussion').strip().replace('"', '')
+
+            # Create new conversation - store as proper JSON
+            result = supabase.table('project_ai_chats').insert({
+                'project_id': project_id,
+                'user_id': user_id,
+                'title': title,
+                'messages': updated_messages  # Direct list, not json.dumps()
+            }).execute()
+            
+            # Parse messages if they're stored as string
+            if isinstance(result.data[0]['messages'], str):
+                result.data[0]['messages'] = json.loads(result.data[0]['messages'])
+                
+            return result.data[0]
+
+    except Exception as e:
+        print(f"Error in project AI chat: {e}")
+        raise HTTPException(status_code=500, detail="An error occurred during the AI chat process.")
+
+@app.delete("/api/projects/{project_id}/ai_chats/{chat_id}")
+async def delete_project_chat(project_id: str, chat_id: str, user_id: str = Depends(get_current_user_id)):
+    """Delete a project-specific chat conversation."""
+    try:
+        supabase.table('project_ai_chats').delete().eq('id', chat_id).eq('user_id', user_id).eq('project_id', project_id).execute()
+        return {"message": "Chat deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Could not delete chat")
+    
+# Add this to your FastAPI backend
+@app.get("/api/projects/{project_id}/ai_chats/{chat_id}")
+async def get_single_project_chat(project_id: str, chat_id: str, user_id: str = Depends(get_current_user_id)):
+    """Fetches a single AI chat conversation by ID."""
+    try:
+        print(f"🔍 Fetching single chat: project={project_id}, chat={chat_id}, user={user_id}")
+        
+        result = supabase.table('project_ai_chats').select(
+            'id, title, messages, updated_at, created_at'
+        ).eq('id', chat_id).eq('project_id', project_id).eq('user_id', user_id).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        convo = result.data[0]
+        print(f"📊 Found conversation: {convo['title']}")
+        
+        # Parse messages if they're stored as string
+        if isinstance(convo['messages'], str):
+            try:
+                messages_data = json.loads(convo['messages'])
+            except json.JSONDecodeError as e:
+                print(f"❌ Error parsing messages: {e}")
+                messages_data = []
+        else:
+            messages_data = convo['messages']
+        
+        return {
+            'id': convo['id'],
+            'project_id': project_id,
+            'title': convo['title'],
+            'messages': messages_data,
+            'updated_at': convo['updated_at'],
+            'created_at': convo.get('created_at')
+        }
+        
+    except Exception as e:
+        print(f"❌ Error fetching project AI chat: {e}")
+        raise HTTPException(status_code=404, detail="Conversation not found")

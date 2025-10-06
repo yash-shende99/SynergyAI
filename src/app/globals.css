@@ -71,3 +71,63 @@ body {
   cursor: text;
   transform-origin: 0% 0%;
 }
+
+/* styles/globals.css */
+.annotation-highlight {
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border-bottom: 2px dotted currentColor;
+}
+
+.annotation-highlight:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Selection styles */
+::selection {
+  background-color: rgba(245, 158, 11, 0.3);
+}
+
+::-moz-selection {
+  background-color: rgba(245, 158, 11, 0.3);
+}
+
+/* styles/globals.css */
+.textLayer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  opacity: 0.2;
+  line-height: 1.0;
+}
+
+.textLayer ::selection {
+  background: rgba(255, 255, 0, 0.3);
+}
+
+.textLayer ::-moz-selection {
+  background: rgba(255, 255, 0, 0.3);
+}
+
+.textLayer > span {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+
+.annotation-highlight {
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border-bottom: 2px dotted currentColor;
+}
+
+.annotation-highlight:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}

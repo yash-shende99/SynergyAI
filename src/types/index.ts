@@ -1,6 +1,57 @@
 // types/index.ts
 import { LucideIcon } from 'lucide-react';
 
+// types/index.ts - Add these types
+export interface ProjectAiChat {
+  id: string | null;
+  project_id: string;
+  title: string;
+  messages: ChatMessage[];
+  updated_at: string;
+  created_at?: string;
+}
+
+export interface ProjectChatQuery {
+  question: string;
+  existing_messages: ChatMessage[];
+  chat_id?: string;
+}
+export interface AnnotationComment {
+  id: string;
+  userId: string;
+  userName: string | null;
+  avatarUrl: string | null;
+  text: string;
+  timestamp: string;
+  type: 'comment';
+}
+
+export interface AnnotationThread {
+  id: string;
+  documentId: string;
+  highlightedText: string;
+  pageNumber?: number | null;
+  xPosition?: number | null;
+  yPosition?: number | null;
+  resolved: boolean;
+  createdBy: {
+    id: string;
+    name: string | null;
+    avatarUrl: string | null;
+  };
+  createdAt: string;
+  comments: AnnotationComment[];
+}
+
+// types/index.ts
+export interface AnnotatedDocument {
+  id: string;
+  name: string;
+  comment_count: number;  // Match backend field name
+  unresolved_count: number;  // Match backend field name
+  uploaded_at?: string;
+  category?: string;
+}
 
 export interface ProjectAccessSummary {
   totalMembers: number;
@@ -424,6 +475,7 @@ export interface SynergyAiScore {
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  sources?: any[];
 }
 
 export interface Conversation {

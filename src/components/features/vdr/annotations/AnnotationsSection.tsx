@@ -1,54 +1,70 @@
+// components/features/vdr/annotations/AnnotationsSection.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, FC, useEffect } from 'react';
+import { AnnotatedDocument, AnnotationThread } from '../../../../types';
 import DocumentListPanel from './DocumentListPanel';
 import DocumentViewer from './DocumentViewer';
 import CommentsPanel from './CommentsPanel';
 
-// --- FIX STARTS HERE ---
-// 1. Define the specific, valid keys for our mock threads
-export type ThreadKey = 'thread-01' | 'thread-02';
-
-// 2. Define the structure of a thread
-export interface Thread {
-  user: string;
-  text: string;
-  replies: { user: string; text: string }[];
+interface AnnotationsSectionProps {
+  documents: AnnotatedDocument[];
+  activeDocument: AnnotatedDocument | null;
+  onSelectDocument: (doc: AnnotatedDocument | null) => void;
+  threads: AnnotationThread[];
+  refreshThreads: () => void;
 }
 
-// 3. Explicitly type our mockThreads object
-const mockThreads: Record<ThreadKey, Thread> = {
-  'thread-01': { user: 'Ananya Sharma', text: 'Should we negotiate this down to 3 years? Seems long.', replies: [{ user: 'Rohan Kapoor', text: 'Agreed. Let\'s bring this up in the next call.' }] },
-  'thread-02': { user: 'AI Assistant', text: 'Risk Detected: This Change of Control clause lacks specificity. Recommend clarifying the definition of "control".', replies: [] },
-};
-// --- FIX ENDS HERE ---
+const AnnotationsSection: FC<AnnotationsSectionProps> = ({
+  documents,
+  activeDocument,
+  onSelectDocument,
+  threads,
+  refreshThreads
+}) => {
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
 
-export default function AnnotationsSection() {
-  const [activeDocument, setActiveDocument] = useState('Master Service Agreement.docx');
-  // Use our specific ThreadKey type for the state
-  const [activeThreadId, setActiveThreadId] = useState<ThreadKey | null>('thread-01');
+  // Auto-select first thread when threads change
+  useEffect(() => {
+    if (threads.length > 0 && !activeThreadId) {
+      setActiveThreadId(threads[0].id);
+    } else if (threads.length === 0) {
+      setActiveThreadId(null);
+    }
+  }, [threads, activeThreadId]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[80vh]">
+      {/* Document List */}
       <div className="lg:col-span-3">
-        <DocumentListPanel 
+        <DocumentListPanel
+          documents={documents}
           activeDocument={activeDocument}
-          onSelectDocument={setActiveDocument}
+          onSelectDocument={onSelectDocument}
         />
       </div>
+
+      {/* Document Viewer */}
       <div className="lg:col-span-6">
-        <DocumentViewer 
-          documentName={activeDocument}
+        <DocumentViewer
+          document={activeDocument}  // This will be passed as selectedDocument in the child
+          threads={threads}
           activeThreadId={activeThreadId}
           onSelectThread={setActiveThreadId}
+          onRefreshThreads={refreshThreads}
         />
       </div>
+
+      {/* Comments Panel */}
       <div className="lg:col-span-3">
-        <CommentsPanel 
-          activeThreadId={activeThreadId}
-          threads={mockThreads} // Pass down the full threads object
+        <CommentsPanel
+          activeThread={threads.find(t => t.id === activeThreadId) || null}
+          onCommentPosted={refreshThreads}
+          onThreadResolved={refreshThreads}
         />
       </div>
     </div>
   );
-}
+};
+
+export default AnnotationsSection;
