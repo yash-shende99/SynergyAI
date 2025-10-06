@@ -1,48 +1,65 @@
+// app/dashboard/intelligence/market/page.tsx - WITH WORKING CACHE
 'use client';
-
-import { useState, useEffect } from 'react';
-import { MarketIntelligenceData } from '../../../../types';
-import { Loader2, AlertTriangle } from 'lucide-react';
-import { supabase } from '../../../../lib/supabaseClient';
 import MarketIntelligenceDashboard from '../../../../components/features/intelligence/market/MarketIntelligenceDashboard';
+import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { supabase } from '../../../../lib/supabaseClient';
+import { useSimpleCache } from '../../../../hooks/useSimpleCache';
+
+// Fetch function
+const fetchMarketData = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('No session');
+
+  const response = await fetch('http://localhost:8000/api/intelligence/market', {
+    headers: { 'Authorization': `Bearer ${session.access_token}` }
+  });
+  
+  if (!response.ok) throw new Error("Failed to fetch market data");
+  return response.json();
+};
 
 export default function MarketIntelligencePage() {
-  const [marketData, setMarketData] = useState<MarketIntelligenceData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { data: marketData, loading, error, refetch } = useSimpleCache('market-data', fetchMarketData, 120000);
 
-  useEffect(() => {
-    async function fetchMarketData() {
-      setIsLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { setIsLoading(false); return; }
-      
-      try {
-        const response = await fetch('http://localhost:8000/api/intelligence/market', {
-          headers: { 'Authorization': `Bearer ${session.access_token}` }
-        });
-        if (!response.ok) throw new Error("Failed to fetch market intelligence data.");
-        
-        const data = await response.json();
-        setMarketData(data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    fetchMarketData();
-  }, []);
-
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>;
+  if (loading && !marketData) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary"/>
+        <span className="ml-2">Loading market data...</span>
+      </div>
+    );
   }
 
-  if (error || !marketData) {
-    return <div className="flex flex-col justify-center items-center h-full text-red-400"><AlertTriangle className="h-8 w-8 mb-2"/><p>{error || "An error occurred."}</p></div>;
+  if (error) {
+    return (
+      <div className="flex flex-col justify-center items-center h-64 text-red-400">
+        <AlertTriangle className="h-8 w-8 mb-2"/>
+        <p>{error}</p>
+        <button 
+          onClick={() => refetch()}
+          className="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 flex items-center"
+        >
+          <RefreshCw size={16} className="mr-2"/>
+          Try Again
+        </button>
+      </div>
+    );
   }
 
   return (
-    <MarketIntelligenceDashboard data={marketData} />
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-white">Market Intelligence</h1>
+        <button 
+          onClick={() => refetch()}
+          className="flex items-center gap-2 px-4 py-2 bg-surface hover:bg-border text-white rounded-xl transition-colors"
+          disabled={loading}
+        >
+          <RefreshCw size={16} className={loading ? 'animate-spin' : ''}/>
+          {loading ? 'Refreshing...' : 'Refresh Data'}
+        </button>
+      </div>
+      <MarketIntelligenceDashboard data={marketData} />
+    </div>
   );
 }

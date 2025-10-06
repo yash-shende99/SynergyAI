@@ -1,3 +1,4 @@
+from functools import wraps
 import os
 import json
 import shutil
@@ -9,7 +10,7 @@ from fastapi.responses import StreamingResponse, FileResponse
 from supabase import create_client, Client
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
-from typing import Optional, List, Dict
+from typing import Optional, List, Any, Dict
 import re
 import time
 from supabase import Client
@@ -329,6 +330,69 @@ async def get_current_user_id(request: Request) -> str:
             raise HTTPException(status_code=401, detail="Invalid token")
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+
+class SimpleMemoryCache:
+    def __init__(self):
+        self._cache: Dict[str, Any] = {}
+        self._lock = asyncio.Lock()
+    
+    async def get(self, key: str) -> Any:
+        async with self._lock:
+            if key in self._cache:
+                data, expiry = self._cache[key]
+                if expiry is None or time.time() < expiry:
+                    return data
+                else:
+                    del self._cache[key]
+            return None
+    
+    async def set(self, key: str, value: Any, ex: int = None):
+        async with self._lock:
+            expiry = time.time() + ex if ex else None
+            self._cache[key] = (value, expiry)
+    
+    async def delete(self, key: str):
+        async with self._lock:
+            if key in self._cache:
+                del self._cache[key]
+
+# Initialize the cache
+memory_cache = SimpleMemoryCache()
+
+# SIMPLE CACHE DECORATOR THAT ACTUALLY WORKS
+def cache_response(ttl: int = 300, key_prefix: str = ""):
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            try:
+                # Skip caching for specific endpoints if needed
+                if "user_id" not in kwargs:
+                    return await func(*args, **kwargs)
+                
+                user_id = kwargs.get('user_id')
+                cache_key = f"{key_prefix}:{user_id}:{func.__name__}"
+                
+                # Try to get from cache
+                cached = await memory_cache.get(cache_key)
+                if cached:
+                    print(f"✅ Cache HIT for {cache_key}")
+                    return cached
+                
+                # If not in cache, execute function
+                print(f"❌ Cache MISS for {cache_key}")
+                result = await func(*args, **kwargs)
+                
+                # Store in cache
+                await memory_cache.set(cache_key, result, ex=ttl)
+                return result
+                
+            except Exception as e:
+                print(f"Cache error in {func.__name__}: {e}")
+                # If caching fails, just return the original function result
+                return await func(*args, **kwargs)
+        return wrapper
+    return decorator
 
 # --- API ENDPOINTS ---
 
@@ -754,6 +818,7 @@ async def get_current_user_id(request: Request) -> str:
         raise HTTPException(status_code=401, detail="Invalid token")
     
 @app.get("/api/projects", response_model=List[Dict])
+@cache_response(ttl=180, key_prefix="projects") 
 async def get_projects(user_id: str = Depends(get_current_user_id)):
     """
     Fetches all projects the current user is a member of by calling our
@@ -2228,6 +2293,7 @@ async def generate_sector_trend(client: httpx.AsyncClient, sector: str) -> Dict:
         return {"sector": sector, "trend": "AI analysis for this sector is currently unavailable."}
 
 @app.get("/api/intelligence/market")
+@cache_response(ttl=300, key_prefix="market_intel") 
 async def get_market_intelligence(user_id: str = Depends(get_current_user_id)):
     """
     Generates a complete market intelligence briefing with LIVE data.
