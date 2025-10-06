@@ -1,4 +1,4 @@
-// app/dashboard/page.tsx - COMPLETE CLEAN VERSION
+// app/dashboard/page.tsx - FIXED VERSION
 'use client';
 import { useState } from 'react';
 import PipelineSection from './pipeline/PipelineSection';
@@ -6,7 +6,7 @@ import CreateProjectModal from './pipeline/CreateProjectModal';
 import { Project } from '../../types';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
-import { useSimpleCache } from '../../hooks/useSimpleCache';
+import { useEnhancedCache } from '../../hooks/useEnhancedCache'; // ✅ Correct import
 
 // Move fetch function OUTSIDE the component to avoid redeclaration
 const fetchProjectsData = async (): Promise<Project[]> => {
@@ -24,8 +24,12 @@ const fetchProjectsData = async (): Promise<Project[]> => {
 export default function DashboardPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // Use the cache hook - this replaces ALL your useState and useEffect
-  const { data: projectsData, loading, error, refetch } = useSimpleCache('projects', fetchProjectsData);
+  // Use the enhanced cache hook
+  const { data: projectsData, loading, error, refetch } = useEnhancedCache(
+    'projects', 
+    fetchProjectsData,
+    { ttl: 300000 } // 5 minutes cache
+  );
 
   const handleCreateProject = async (projectData: { name: string; companyCin: string; teamEmails: string[] }) => {
     const { data: { session } } = await supabase.auth.getSession();
