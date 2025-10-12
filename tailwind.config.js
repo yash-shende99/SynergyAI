@@ -11,13 +11,24 @@ module.exports = {
         sans: ['Inter', 'sans-serif'], // Sets Inter as the default font
       },
       colors: {
-        background: '#000000', // True black for the main background
+        background: '#000000',
         surface: '#121212', 
-        secondarySurface: '#222222',   // A very dark gray for cards, sidebars
-        primary: '#9112BC',   // Vibrant blue accent for buttons and active states
+        secondarySurface: '#222222',
+        primary: '#9112BC',
         'primary-hover': '#7A0FA1',
-        secondary: '#64748B', // Muted text color for secondary information
-        border: '#27272A',     // A soft border color for dark themes
+        secondary: '#64748B',
+        border: '#27272A',
+        // SynergyAI colors as direct color utilities
+        'synergy-ai': {
+          primary: '#9112BC',
+          'primary-hover': '#7A0FA1',
+          purple: '#9112BC',
+          'purple-light': '#A846D0',
+          blue: '#6366F1',
+          cyan: '#06B6D4',
+          dark: '#121212',
+          darker: '#000000',
+        }
       },
     },
   },
