@@ -9,7 +9,7 @@ export const globalNavItems: NavItem[] = [
   { id: 'sourcing', name: 'Deal Sourcing', href: '/dashboard/sourcing', icon: Search },
   { id: 'chat', name: 'Global AI Co-Pilot', href: '/dashboard/chat', icon: MessageCircle },
   // { id: 'library', name: 'Knowledge Library', href: '/dashboard/knowledge-library', icon: BookOpen },
-  { id: 'team-chat', name: 'Team Chat', href: '/dashboard/team-chat', icon: Users }
+  // { id: 'team-chat', name: 'Team Chat', href: '/dashboard/team-chat', icon: Users }
 ];
 
 // Update projectNavItems to have proper base paths
@@ -42,7 +42,6 @@ export const featureConfig: Record<string, FeatureConfig> = {
       { name: 'News Dashboard', href: '/dashboard/intelligence' },
       { name: 'AI Recommendations', href: '/dashboard/intelligence/recommendations' },
       { name: 'Market Intelligence', href: '/dashboard/intelligence/market' },
-      { name: 'Saved Picks', href: '/dashboard/intelligence/saved' },
     ],
   },
   'sourcing': { 
@@ -61,7 +60,7 @@ export const featureConfig: Record<string, FeatureConfig> = {
       { name: 'Ask', href: '/dashboard/chat' },
       { name: 'History', href: '/dashboard/chat/history' },
       { name: 'Suggested Questions', href: '/dashboard/chat/suggestions' },
-      { name: 'Knowledge Retrieval', href: '/dashboard/chat/knowledge' },
+      // { name: 'Knowledge Retrieval', href: '/dashboard/chat/knowledge' },
     ],
   },
   'library': {
@@ -144,7 +143,7 @@ export const featureConfig: Record<string, FeatureConfig> = {
       { name: 'Live Models', href: '/valuation/models' },
       { name: 'Scenarios', href: '/valuation/scenarios' },
       { name: 'Monte Carlo', href: '/valuation/mc' },
-      { name: 'Synergies', href: '/valuation/synergies' },
+      // { name: 'Synergies', href: '/valuation/synergies' },
     ],
   },
   'reports': {

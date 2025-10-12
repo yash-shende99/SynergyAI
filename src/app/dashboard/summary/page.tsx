@@ -14,7 +14,6 @@ export default function SummaryPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // This is the combined fetch function
     async function fetchSummaryData() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setIsLoading(false); return; }

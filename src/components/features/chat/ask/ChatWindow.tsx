@@ -16,8 +16,6 @@ const ChatWindow: FC<{ messages: ChatMessage[], isLoading: boolean }> = ({ messa
         <MessageBubble key={index} message={msg} />
       ))}
       
-      {/* --- THIS IS THE FIX --- */}
-      {/* We now render our new, intelligent loading bubble. */}
       {isLoading && <AILoadingBubble />}
 
       <div ref={scrollRef} />

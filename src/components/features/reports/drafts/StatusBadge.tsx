@@ -1,14 +1,18 @@
 import { FC } from 'react';
-import { DraftStatus } from '../../../../types';
 
-const statusColors: Record<DraftStatus, string> = {
-  Draft: 'bg-gray-500/30 text-gray-300 border-gray-500/50',
-  Review: 'bg-amber-500/30 text-amber-300 border-amber-500/50',
-  Final: 'bg-green-500/30 text-green-300 border-green-500/50',
+interface StatusBadgeProps {
+  status: 'Draft' | 'In Review' | 'Published' | 'Archived';
+}
+
+const statusColors = {
+  Draft: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+  'In Review': 'bg-blue-500/20 text-blue-300 border-blue-500/30', 
+  Published: 'bg-green-500/20 text-green-300 border-green-500/30',
+  Archived: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
 };
 
-const StatusBadge: FC<{ status: DraftStatus }> = ({ status }) => (
-  <span className={`px-2 py-0.5 text-xs font-semibold rounded-full border ${statusColors[status]}`}>
+const StatusBadge: FC<StatusBadgeProps> = ({ status }) => (
+  <span className={`px-2 py-1 text-xs font-semibold rounded-full border ${statusColors[status]}`}>
     {status}
   </span>
 );

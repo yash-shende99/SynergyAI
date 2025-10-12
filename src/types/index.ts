@@ -1,6 +1,56 @@
 // types/index.ts
 import { LucideIcon } from 'lucide-react';
 
+export interface DocumentVersion {
+  id: string;
+  documentId: string;
+  version: string;
+  content: string;
+  createdAt: string;
+  createdBy: {
+    userId: string;
+    userName: string;
+    avatarUrl?: string;
+  };
+  changes: string[];
+  wordCount: number;
+  characterCount: number;
+}
+
+export interface VersionHistory {
+  documentId: string;
+  versions: DocumentVersion[];
+  currentVersionId: string;
+  autoSaveEnabled: boolean;
+}
+
+export interface Comment {
+  id: string;
+  userId: string;
+  userName: string;
+  avatarUrl?: string;
+  text: string;
+  timestamp: string;
+  type: 'comment';
+  resolved?: boolean;
+  replies?: Comment[];
+}
+
+export interface DocumentAnnotation {
+  id: string;
+  documentId: string;
+  projectId: string;
+  createdByUserId: string;
+  highlightedText: string;
+  commentThread: Comment[];
+  pageNumber?: number;
+  xPosition?: number;
+  yPosition?: number;
+  resolved: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // types/index.ts - Add these types
 export interface ProjectAiChat {
   id: string | null;
@@ -627,10 +677,12 @@ export type TemplateCategory = 'Financial' | 'Legal' | 'Risk' | 'Strategic' | 'I
 export interface ReportTemplate {
   id: string;
   name: string;
-  category: TemplateCategory;
   description: string;
+  category: TemplateCategory;
   createdBy: string;
   sections: string[];
+  lastUsed?: string;
+  thumbnailUrl?: string;
 }
 
 // Enhanced types
@@ -649,21 +701,24 @@ export interface ReportDraft {
   };
 }
 
-export type DraftStatus = 'Draft' | 'Review' | 'Final';
-
+// Make sure these types are consistent
+export type DraftStatus = 'Draft' | 'In Review' | 'Published' | 'Archived';
 
 export interface Draft {
   id: string;
   title: string;
+  content?: {
+    html?: string;
+    lastUpdated?: string;
+  };
   createdBy: {
     name: string;
-    avatarUrl: string;
+    avatarUrl?: string;
   };
+  status: DraftStatus; // Use the same type
   lastModified: string;
-  status: DraftStatus;
-  projectId: string; // Add this
-  createdAt: string; // Add this
-  content?: any; // Optional content field
+  projectId: string;
+  createdAt?: string;
 }
 
 

@@ -44,20 +44,16 @@ export default function DraftsSection() {
   const handleCloseEditor = () => setEditingDraft(null);
   
   const handleNewDraft = () => {
-    const newDraftData = {
+    const newDraft = addDraft({
       title: 'Untitled Draft', 
       createdBy: { 
         name: 'You', 
         avatarUrl: '' 
       }, 
-      status: 'Draft' as const,
+      status: 'Draft',
       projectId: projectId
-    };
+    });
     
-    addDraft(newDraftData);
-    
-    // Find the newly created draft to open it
-    const newDraft = useReportStore.getState().drafts[0];
     setEditingDraft(newDraft);
   };
 
@@ -111,10 +107,12 @@ export default function DraftsSection() {
         )}
       </div>
       
-      <CollaborativeEditorModal 
-        draft={editingDraft}
-        onClose={handleCloseEditor}
-      />
+      {editingDraft && (
+        <CollaborativeEditorModal 
+          draft={editingDraft}
+          onClose={handleCloseEditor}
+        />
+      )}
     </>
   );
 }
