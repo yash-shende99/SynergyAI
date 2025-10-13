@@ -187,7 +187,7 @@ const ProjectSidebar: FC<ProjectSidebarProps> = ({ projectId, activeFeatureId, i
                 `Project: ${projectName}`
               )}
             </h2>
-            <p className="text-xs text-secondary mt-1">
+            <div className="text-xs text-secondary mt-1">
               {projectLoading ? (
                 <div className="animate-pulse bg-gray-600 h-3 w-24 rounded"></div>
               ) : error ? (
@@ -195,7 +195,7 @@ const ProjectSidebar: FC<ProjectSidebarProps> = ({ projectId, activeFeatureId, i
               ) : (
                 `Acquisition of ${targetCompanyName}`
               )}
-            </p>
+            </div>
             {projectData?.status && (
               <div className="flex items-center gap-2 mt-1">
                 <div className={`w-2 h-2 rounded-full ${
@@ -266,12 +266,20 @@ const ProjectSidebar: FC<ProjectSidebarProps> = ({ projectId, activeFeatureId, i
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white truncate">
-                  {profileLoading ? 'Loading...' : userProfile?.name || 'User'}
-                </p>
-                <p className="text-xs text-secondary truncate">
-                  {profileLoading ? 'loading...' : userProfile?.project_role || 'Project Member'}
-                </p>
+                <div className="text-sm font-semibold text-white truncate">
+                  {profileLoading ? (
+                    <div className="animate-pulse bg-gray-600 h-4 w-20 rounded"></div>
+                  ) : (
+                    userProfile?.name || 'User'
+                  )}
+                </div>
+                <div className="text-xs text-secondary truncate">
+                  {profileLoading ? (
+                    <div className="animate-pulse bg-gray-600 h-3 w-16 rounded mt-1"></div>
+                  ) : (
+                    userProfile?.project_role || 'Project Member'
+                  )}
+                </div>
               </div>
 
               {/* Global Settings Button */}
