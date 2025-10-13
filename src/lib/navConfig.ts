@@ -8,6 +8,7 @@ export const globalNavItems: NavItem[] = [
   { id: 'intelligence', name: 'Intelligence', href: '/dashboard/intelligence', icon: Lightbulb },
   { id: 'sourcing', name: 'Deal Sourcing', href: '/dashboard/sourcing', icon: Search },
   { id: 'chat', name: 'Global AI Co-Pilot', href: '/dashboard/chat', icon: MessageCircle },
+  { id: 'notes', name: 'Journal', href: '/dashboard/notes', icon: BookOpen },
   // { id: 'library', name: 'Knowledge Library', href: '/dashboard/knowledge-library', icon: BookOpen },
   // { id: 'team-chat', name: 'Team Chat', href: '/dashboard/team-chat', icon: Users }
 ];
@@ -27,15 +28,15 @@ export const projectNavItems: NavItem[] = [
 // --- DEFINITIVE HORIZONTAL FEATURE HEADERS ---
 
 export const featureConfig: Record<string, FeatureConfig> = {
-  'dashboard': { 
-    title: 'Dashboard', 
+  'dashboard': {
+    title: 'Dashboard',
     subFeatures: [
-      { name: 'Pipeline', href: '/dashboard' }, 
+      { name: 'Pipeline', href: '/dashboard' },
       { name: 'AI Summary', href: '/dashboard/summary' },
       { name: 'Next Actions', href: '/dashboard/actions' }
     ]
   },
-   
+
   'intelligence': {
     title: 'Intelligence',
     subFeatures: [
@@ -44,8 +45,8 @@ export const featureConfig: Record<string, FeatureConfig> = {
       { name: 'Market Intelligence', href: '/dashboard/intelligence/market' },
     ],
   },
-  'sourcing': { 
-    title: 'Deal Sourcing', 
+  'sourcing': {
+    title: 'Deal Sourcing',
     subFeatures: [
       { name: 'Search', href: '/dashboard/sourcing' },
       { name: 'Filters', href: '/dashboard/sourcing/filters' },
@@ -77,6 +78,14 @@ export const featureConfig: Record<string, FeatureConfig> = {
       { name: 'Channels', href: '/dashboard/team-chat' },
       { name: 'Direct Messages', href: '/dashboard/team-chat/dm' },
       { name: 'Files', href: '/dashboard/team-chat/files' },
+    ],
+  },
+  'notes': {
+    title: 'Journal & Notes',
+    subFeatures: [
+      { name: 'All Notes', href: '/dashboard/notes' },
+      { name: 'Search', href: '/dashboard/notes/search' },
+      { name: 'AI Lab', href: '/dashboard/notes/ai-lab' },
     ],
   },
   'notifications': {
@@ -117,13 +126,13 @@ export const featureConfig: Record<string, FeatureConfig> = {
       { name: 'Industry Updates', href: '/insights/industry' },
     ],
   },
-  'vdr': { 
-    title: 'Virtual Data Room', 
+  'vdr': {
+    title: 'Virtual Data Room',
     subFeatures: [
-      { name: 'Upload', href: '/vdr' }, 
+      { name: 'Upload', href: '/vdr' },
       { name: 'Categories', href: '/vdr/categories' },
-      { name: 'Search', href: '/vdr/search' }, 
-      { name: 'Annotations', href: '/vdr/annotations' }, 
+      { name: 'Search', href: '/vdr/search' },
+      { name: 'Annotations', href: '/vdr/annotations' },
       { name: 'Q&A', href: '/vdr/qa' },
     ]
   },
@@ -163,8 +172,8 @@ export const featureConfig: Record<string, FeatureConfig> = {
       { name: 'Invitations', href: '/team/invite' },
     ],
   },
-  'project-notifications': { 
-    title: 'Project Notification Settings', 
+  'project-notifications': {
+    title: 'Project Notification Settings',
     subFeatures: [
       { name: 'All', href: '/project-notifications' },
       { name: 'Deal Updates', href: '/project-notifications/deals' },
@@ -173,8 +182,8 @@ export const featureConfig: Record<string, FeatureConfig> = {
       { name: 'System', href: '/project-notifications/system' },
     ]
   },
-  'project-settings': { 
-    title: 'Project Settings', 
+  'project-settings': {
+    title: 'Project Settings',
     subFeatures: [
       { name: 'General', href: '/project-settings' },
       { name: 'Access', href: '/project-settings/access' },
@@ -201,10 +210,10 @@ export const findActiveFeature = (pathname: string, navItems: NavItem[], baseHre
 
 export const findProjectActiveFeature = (pathname: string, projectId: string) => {
   const projectBase = `/dashboard/project/${projectId}`;
-  
+
   // Remove the project base to work with relative paths
   const relativePath = pathname.replace(projectBase, '') || '/';
-  
+
   const projectRoutes = {
     '': 'mission-control',
     '/': 'mission-control',
@@ -257,7 +266,7 @@ export const newsConfig = {
       'Critical Alerts'
     ]
   },
-  
+
   project: {
     tabs: [
       { id: 'project-news', name: 'Project News', description: 'News specific to this project' },
@@ -330,6 +339,14 @@ export const globalSubFeatures = {
       { name: 'Channels', href: '/dashboard/team-chat' },
       { name: 'Direct Messages', href: '/dashboard/team-chat/dm' },
       { name: 'Files', href: '/dashboard/team-chat/files' },
+    ],
+  },
+  notes: {
+    title: 'Journal & Notes',
+    subFeatures: [
+      { name: 'All Notes', href: '/dashboard/notes' },
+      { name: 'Search', href: '/dashboard/notes/search' },
+      { name: 'AI Lab', href: '/dashboard/notes/ai-lab' },
     ],
   },
   notifications: {
@@ -428,8 +445,8 @@ export const projectSubFeatures = {
       { name: 'Invitations', href: '/team/invite' },
     ],
   },
-  'project-notifications': { 
-    title: 'Project Notification Settings', 
+  'project-notifications': {
+    title: 'Project Notification Settings',
     subFeatures: [
       { name: 'All', href: '/project-notifications' },
       { name: 'Deal Updates', href: '/project-notifications/deals' },
@@ -438,8 +455,8 @@ export const projectSubFeatures = {
       { name: 'System', href: '/project-notifications/system' },
     ]
   },
-  'project-settings': { 
-    title: 'Project Settings', 
+  'project-settings': {
+    title: 'Project Settings',
     subFeatures: [
       { name: 'General', href: '/project-settings' },
       { name: 'Access', href: '/project-settings/access' },

@@ -1,6 +1,28 @@
 // types/index.ts
 import { LucideIcon } from 'lucide-react';
 
+
+export type AiLabAction = 'summarize' | 'find_themes';
+
+export interface AiLabResult {
+  action: AiLabAction;
+  output: string | string[]; // Can be a summary string or an array of theme strings
+}
+export interface NoteSearchResult {
+  id: string;
+  title: string;
+  excerpt: string; // The highlighted text snippet from the search
+  updated_at: string;
+}
+
+export interface Note {
+  id: string;
+  title: string;
+  content: string;
+  summary?: string; // AI-generated
+  tags?: string[];   // AI-generated
+  updated_at: string;
+}
 export interface DocumentVersion {
   id: string;
   documentId: string;

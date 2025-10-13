@@ -2,7 +2,7 @@
 import React from "react";
 
 const Footer = () => {
-  const scrollToSection = (sectionId) => {
+  const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
       // Add a small offset to account for fixed navbar

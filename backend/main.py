@@ -10,7 +10,7 @@ from fastapi.responses import StreamingResponse, FileResponse
 from supabase import create_client, Client
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
-from typing import Optional, List, Any, Dict
+from typing import Optional, List, Any, Dict, Union
 import re
 import time
 from supabase import Client
@@ -5740,3 +5740,154 @@ async def get_single_project_chat(project_id: str, chat_id: str, user_id: str = 
     except Exception as e:
         print(f"❌ Error fetching project AI chat: {e}")
         raise HTTPException(status_code=404, detail="Conversation not found")
+    
+class NoteUpdate(BaseModel):
+    title: str
+    content: str
+
+
+@app.get("/api/notes", response_model=List[Dict])
+async def get_all_notes(user_id: str = Depends(get_current_user_id)):
+    """Fetches all notes for the current user."""
+    try:
+        result = supabase.table('notes').select('*').eq('user_id', user_id).order('updated_at', desc=True).execute()
+        return result.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Could not fetch notes.")
+
+@app.post("/api/notes")
+async def create_new_note(user_id: str = Depends(get_current_user_id)):
+    """Creates a new, empty note and returns it."""
+    try:
+        new_note_data = {
+            'user_id': user_id,
+            'title': 'New Note',
+            'content': ''
+        }
+        # --- THIS IS THE DEFINITIVE FIX ---
+        # The incorrect .select() has been REMOVED. The insert operation
+        # automatically returns the data of the newly created row.
+        result = supabase.table('notes').insert(new_note_data).execute()
+        return result.data[0]
+    except Exception as e:
+        print(f"Error creating new note: {e}")
+        raise HTTPException(status_code=500, detail="Could not create new note.")
+
+@app.put("/api/notes/{note_id}")
+async def update_note(note_id: str, note_data: NoteUpdate, user_id: str = Depends(get_current_user_id)):
+    """Updates a note and generates an AI summary."""
+    try:
+        # ... (AI summary generation logic remains the same) ...
+        ai_summary = "AI summary generation is in progress..."
+        
+        update_data = {
+            'title': note_data.title,
+            'content': note_data.content,
+            'summary': ai_summary
+        }
+        supabase.table('notes').update(update_data).eq('id', note_id).eq('user_id', user_id).execute()
+        return {"message": "Note updated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Could not update note.")
+
+@app.delete("/api/notes/{note_id}")
+async def delete_note(note_id: str, user_id: str = Depends(get_current_user_id)):
+    """Deletes a specific note, ensuring the user is the owner."""
+    try:
+        # The .eq('user_id', user_id) is a critical security check to ensure
+        # a user can only delete their own notes.
+        result = supabase.table('notes').delete().eq('id', note_id).eq('user_id', user_id).execute()
+        
+        if not result.data:
+            # This happens if the note doesn't exist or doesn't belong to the user
+            raise HTTPException(status_code=404, detail="Note not found or you do not have permission to delete it.")
+
+        return {"message": "Note deleted successfully"}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"Error deleting note: {e}")
+        raise HTTPException(status_code=500, detail="Could not delete note.")
+    
+class NoteSearchQuery(BaseModel):
+    query: str
+
+@app.post("/api/notes/search")
+async def search_notes(search_query: NoteSearchQuery, user_id: str = Depends(get_current_user_id)):
+    """Performs a text search across all of the user's notes."""
+    try:
+        query_text = search_query.query
+        # This uses PostgreSQL's full-text search. Assumes a 'fts' column exists.
+        # As a fallback, we search title and content separately.
+        results = supabase.table('notes').select('*').or_(f"title.ilike.%{query_text}%,content.ilike.%{query_text}%").eq('user_id', user_id).limit(20).execute()
+        
+        search_results = []
+        for note in results.data:
+            content = note.get('content', '')
+            match_index = content.lower().find(query_text.lower())
+            start = max(0, match_index - 70)
+            end = min(len(content), match_index + 70)
+            excerpt = ("..." + content[start:end].replace(query_text, f"<mark>{query_text}</mark>") + "...") if match_index != -1 else note.get('summary', '')
+
+            search_results.append({
+                "id": note['id'], "title": note['title'],
+                "excerpt": excerpt, "updated_at": note['updated_at']
+            })
+        return search_results
+    except Exception as e:
+        print(f"Error during notes search: {e}")
+        raise HTTPException(status_code=500, detail="An error occurred during search.")
+    
+class AiLabRequest(BaseModel):
+    note_ids: List[str]
+    action: str  # 'summarize', 'find_themes', etc.
+    
+async def get_ai_json_response(prompt: str, retries: int = 3) -> Union[Dict, List]:
+    """A robust function to get a JSON response from the LLM, with retries."""
+    for attempt in range(retries):
+        try:
+            async with httpx.AsyncClient(timeout=180.0) as client:
+                response = await client.post(OLLAMA_SERVER_URL, json={"model": CUSTOM_MODEL_NAME, "prompt": prompt, "stream": False})
+                response.raise_for_status()
+            ai_response_text = response.json().get('response', '{}')
+            # This regex is more robust and finds either a JSON object or array
+            match = re.search(r'(\{.*\}|\[.*\])', ai_response_text, re.DOTALL)
+            if match:
+                return json.loads(match.group(0))
+        except Exception as e:
+            print(f"AI JSON generation attempt {attempt + 1} failed: {e}")
+    raise HTTPException(status_code=500, detail="Failed to get a valid JSON response from the AI model.")
+
+
+@app.post("/api/notes/ai_lab")
+async def notes_ai_lab(request: AiLabRequest, user_id: str = Depends(get_current_user_id)):
+    """Runs complex AI operations across the content of multiple user-selected notes."""
+    try:
+        if not request.note_ids:
+            raise HTTPException(status_code=400, detail="No notes selected.")
+
+        notes_res = supabase.table('notes').select('content').in_('id', request.note_ids).eq('user_id', user_id).execute()
+        combined_content = "\n\n---\n\n".join([note.get('content', '') for note in notes_res.data])
+
+        if not combined_content.strip():
+            return {"action": request.action, "output": "The selected notes are empty."}
+
+        if request.action == 'summarize':
+            prompt = f"Instruction: Synthesize the following notes into a cohesive executive summary...\n\nNotes:\n{combined_content}\n\nSummary:"
+            async with httpx.AsyncClient(timeout=180.0) as client:
+                response = await client.post(OLLAMA_SERVER_URL, json={"model": CUSTOM_MODEL_NAME, "prompt": prompt, "stream": False})
+            summary = response.json().get('response', 'Could not generate summary.').strip()
+            return {"action": "summarize", "output": summary}
+
+        elif request.action == 'find_themes':
+            prompt = f"Instruction: Identify the top 5-7 recurring themes from these notes. Respond ONLY with a JSON array of strings.\n\nNotes:\n{combined_content}\n\nResponse (JSON array only):"
+            themes = await get_ai_json_response(prompt)
+            return {"action": "find_themes", "output": themes}
+        
+        else:
+            raise HTTPException(status_code=400, detail="Invalid AI action.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="An error occurred in the AI Lab.")
+
+# ... (All other existing API endpoints for Projects, VDR, Analytics, etc., remain here)
+

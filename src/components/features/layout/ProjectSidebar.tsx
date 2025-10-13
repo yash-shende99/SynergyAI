@@ -21,6 +21,15 @@ interface ProjectUserProfile {
   avatar_url?: string;
 }
 
+interface ProjectData {
+  id: string;
+  name: string;
+  targetCompany?: {
+    name: string;
+  };
+  status?: string;
+}
+
 const useProjectUserProfile = (projectId: string) => {
   const [userProfile, setUserProfile] = useState<ProjectUserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,7 +45,6 @@ const useProjectUserProfile = (projectId: string) => {
           return;
         }
 
-        // Call the FastAPI backend directly
         const response = await fetch(`http://localhost:8000/api/projects/${projectId}/user-profile`, {
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
@@ -68,9 +76,63 @@ const useProjectUserProfile = (projectId: string) => {
   return { userProfile, loading };
 };
 
+const useProjectData = (projectId: string) => {
+  const [projectData, setProjectData] = useState<ProjectData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchProjectData = async () => {
+      if (!projectId) return;
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setLoading(false);
+          return;
+        }
+
+        console.log('🔍 Fetching project data for project ID:', projectId);
+        
+        const response = await fetch(`http://localhost:8000/api/projects/${projectId}`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        console.log('🔍 Project data response status:', response.status);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ Project data received:', data);
+          setProjectData(data);
+        } else if (response.status === 404) {
+          console.error('Project not found');
+          setError('Project not found');
+        } else {
+          console.error('Failed to fetch project data:', response.status, response.statusText);
+          const errorText = await response.text();
+          console.error('Error details:', errorText);
+          setError('Failed to load project data');
+        }
+      } catch (error) {
+        console.error('Failed to fetch project data:', error);
+        setError('Network error loading project data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProjectData();
+  }, [projectId]);
+
+  return { projectData, loading, error };
+};
+
 const ProjectSidebar: FC<ProjectSidebarProps> = ({ projectId, activeFeatureId, isOpen, onClose }) => {
-  const projectName = "Helios";
-  const { userProfile, loading } = useProjectUserProfile(projectId);
+  const { userProfile, loading: profileLoading } = useProjectUserProfile(projectId);
+  const { projectData, loading: projectLoading, error } = useProjectData(projectId);
 
   // Filter out notifications and settings from main nav since they're in the bottom section
   const mainNavItems = projectNavItems.filter(item =>
@@ -80,6 +142,11 @@ const ProjectSidebar: FC<ProjectSidebarProps> = ({ projectId, activeFeatureId, i
   const handleLogout = async () => {
     await supabase.auth.signOut();
   };
+
+  // Get project display name and description
+  const projectName = projectData?.name || 'Loading...';
+  const targetCompanyName = projectData?.targetCompany?.name || 'Target Company';
+  const projectStatus = projectData?.status || 'Active';
 
   return (
     <>
@@ -109,8 +176,37 @@ const ProjectSidebar: FC<ProjectSidebarProps> = ({ projectId, activeFeatureId, i
             <Home size={16} /> Back to Dashboard
           </Link>
           <div className="p-2">
-            <h2 className="font-bold text-white truncate">Project: {projectName}</h2>
-            <p className="text-xs text-secondary mt-1">Acquisition of SolarTech Inc.</p>
+            <h2 className="font-bold text-white truncate">
+              {projectLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-pulse bg-gray-600 h-4 w-32 rounded"></div>
+                </div>
+              ) : error ? (
+                <span className="text-red-400 text-sm">Error loading project</span>
+              ) : (
+                `Project: ${projectName}`
+              )}
+            </h2>
+            <p className="text-xs text-secondary mt-1">
+              {projectLoading ? (
+                <div className="animate-pulse bg-gray-600 h-3 w-24 rounded"></div>
+              ) : error ? (
+                'Unable to load project details'
+              ) : (
+                `Acquisition of ${targetCompanyName}`
+              )}
+            </p>
+            {projectData?.status && (
+              <div className="flex items-center gap-2 mt-1">
+                <div className={`w-2 h-2 rounded-full ${
+                  projectData.status === 'Active' ? 'bg-green-500' : 
+                  projectData.status === 'On Hold' ? 'bg-yellow-500' : 
+                  projectData.status === 'Completed' ? 'bg-blue-500' : 
+                  'bg-gray-500'
+                }`}></div>
+                <span className="text-xs text-secondary capitalize">{projectData.status}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -171,10 +267,10 @@ const ProjectSidebar: FC<ProjectSidebarProps> = ({ projectId, activeFeatureId, i
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-white truncate">
-                  {loading ? 'Loading...' : userProfile?.name || 'User'}
+                  {profileLoading ? 'Loading...' : userProfile?.name || 'User'}
                 </p>
                 <p className="text-xs text-secondary truncate">
-                  {loading ? 'loading...' : userProfile?.project_role || 'Project Member'}
+                  {profileLoading ? 'loading...' : userProfile?.project_role || 'Project Member'}
                 </p>
               </div>
 
