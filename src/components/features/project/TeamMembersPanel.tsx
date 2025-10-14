@@ -1,10 +1,14 @@
 // components/features/project/TeamMembersPanel.tsx
 import { FC } from 'react';
-import { Users, Plus, User } from 'lucide-react';
+import { Users, User } from 'lucide-react';
 import { TeamMember } from '../../../types';
 
-const TeamMembersPanel: FC<{ team: TeamMember[] }> = ({ team }) => {
-  // Safe function to get avatar - uses icon if no name
+interface TeamMembersPanelProps {
+  team: TeamMember[];
+  projectId: string;
+}
+
+const TeamMembersPanel: FC<TeamMembersPanelProps> = ({ team, projectId }) => {
   const renderAvatar = (member: TeamMember) => {
     if (member.avatarUrl) {
       return (
@@ -24,7 +28,6 @@ const TeamMembersPanel: FC<{ team: TeamMember[] }> = ({ team }) => {
       );
     }
     
-    // Fallback to icon
     return (
       <div className="h-8 w-8 rounded-full bg-border flex items-center justify-center">
         <User size={16} className="text-secondary" />
@@ -39,16 +42,14 @@ const TeamMembersPanel: FC<{ team: TeamMember[] }> = ({ team }) => {
           <Users className="h-6 w-6 text-primary"/>
           <h3 className="text-lg font-bold text-white">Project Team</h3>
         </div>
-        <button className="text-secondary hover:text-primary">
-          <Plus size={20}/>
-        </button>
+        <span className="text-sm text-secondary">{team?.length || 0} members</span>
       </div>
       <div className="space-y-3">
         {team && team.length > 0 ? (
           team.map(member => (
             <div key={member.id} className="flex items-center gap-3">
               {renderAvatar(member)}
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-medium text-white">
                   {member.name || 'Unknown User'}
                 </p>
@@ -62,7 +63,7 @@ const TeamMembersPanel: FC<{ team: TeamMember[] }> = ({ team }) => {
           <div className="text-center py-4">
             <Users className="h-12 w-12 text-slate-600 mx-auto mb-2" />
             <p className="text-sm text-secondary">No team members</p>
-            <p className="text-xs text-slate-500">Add team members to collaborate</p>
+            <p className="text-xs text-slate-500">Team members will appear here</p>
           </div>
         )}
       </div>

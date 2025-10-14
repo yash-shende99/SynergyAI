@@ -10,13 +10,13 @@ interface MemoHeaderProps {
 
 const MemoHeader: FC<MemoHeaderProps> = ({ projectName, onExport, onGoBack }) => (
   <div>
-    <button 
+    <button
       onClick={onGoBack}
       className="flex items-center gap-2 text-sm text-secondary hover:text-white mb-4 transition-colors"
     >
       <ArrowLeft size={16} /> Back to Generation
     </button>
-    
+
     <div className="flex justify-between items-center">
       <div>
         <h2 className="text-2xl font-bold text-white">
@@ -26,12 +26,8 @@ const MemoHeader: FC<MemoHeaderProps> = ({ projectName, onExport, onGoBack }) =>
           AI-generated investment analysis and recommendations
         </p>
       </div>
-      
+
       <div className="flex items-center gap-2">
-        <Button variant="secondary" size="sm">
-          <UserPlus size={16} className="mr-2" />
-          Invite Reviewer
-        </Button>
         <Button onClick={onExport} variant="default" size="sm">
           <Download size={16} className="mr-2" />
           Export

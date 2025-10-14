@@ -277,11 +277,23 @@ export interface BriefingCardData {
 
 export interface InvestmentMemo {
   projectName: string;
+  targetCompany?: string; // Add this for the professional memo
+  lastUpdated?: string; // Add this for timestamp
+  dataSources?: string[]; // Add this for data provenance
   briefingCards: BriefingCardData[];
   executiveSummary: string;
   valuationSection: string;
   synergySection: string;
   riskSection: string;
+  strategicRationale: string; // Add this missing property
+  recommendationSection: string; // Add this missing property
+  dashboardMetrics?: { // Add optional dashboard data reference
+    financial: any;
+    dealHealth: any;
+    execution: any;
+  };
+  riskIndicators?: any;
+  nextActions?: any[];
 }
 // Add these to your existing types in types/index.ts
 export interface Scenario {

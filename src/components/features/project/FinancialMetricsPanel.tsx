@@ -15,6 +15,14 @@ const FinancialMetricsPanel: FC<FinancialMetricsPanelProps> = ({
   employees,
   financialHealth
 }) => {
+  // Parse and format EBITDA margin properly
+  const formatEbitdaMargin = (margin: string) => {
+    if (margin === '0.0%' || !margin) {
+      return 'N/A';
+    }
+    return margin;
+  };
+
   const getHealthColor = (health: string) => {
     switch (health) {
       case 'Strong': return 'text-green-400';
@@ -39,7 +47,7 @@ const FinancialMetricsPanel: FC<FinancialMetricsPanelProps> = ({
         
         <div className="flex justify-between items-center">
           <span className="text-sm text-secondary">EBITDA Margin</span>
-          <span className="text-white font-semibold">{ebitdaMargin}</span>
+          <span className="text-white font-semibold">{formatEbitdaMargin(ebitdaMargin)}</span>
         </div>
         
         <div className="flex justify-between items-center">
@@ -50,7 +58,7 @@ const FinancialMetricsPanel: FC<FinancialMetricsPanelProps> = ({
         <div className="flex justify-between items-center pt-3 border-t border-border">
           <span className="text-sm text-secondary">Financial Health</span>
           <span className={`font-semibold ${getHealthColor(financialHealth)}`}>
-            {financialHealth}
+            {financialHealth || 'N/A'}
           </span>
         </div>
       </div>
