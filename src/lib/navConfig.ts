@@ -18,7 +18,7 @@ export const projectNavItems: NavItem[] = [
   { id: 'mission-control', name: 'Mission Control', href: '', icon: Rocket },
   { id: 'insights', name: 'Project Insights', href: '/insights', icon: Lightbulb },
   { id: 'vdr', name: 'Project VDR', href: '/vdr', icon: ShieldCheck },
-  { id: 'chat', name: 'Project AI Co-Pilot', href: '/chat', icon: MessageCircle },
+  { id: 'ai-chat', name: 'Project AI Co-Pilot', href: '/ai-chat', icon: MessageCircle },
   { id: 'analytics', name: 'Analytics & Risk', href: '/analytics', icon: BarChart },
   { id: 'valuation', name: 'Valuation', href: '/valuation', icon: Calculator },
   { id: 'reports', name: 'Reports', href: '/reports', icon: FileText },
@@ -136,6 +136,13 @@ export const featureConfig: Record<string, FeatureConfig> = {
       { name: 'Q&A', href: '/vdr/qa' },
     ]
   },
+  'ai-chat': {
+    title: 'Project AI Co-Pilot',
+    subFeatures: [
+      { name: 'Ask', href: '/ai-chat' },
+      { name: 'History', href: '/ai-chat/history' },
+    ],
+  },
   'analytics': {
     title: 'Analytics & Risk',
     subFeatures: [
@@ -219,7 +226,7 @@ export const findProjectActiveFeature = (pathname: string, projectId: string) =>
     '/': 'mission-control',
     '/insights': 'insights',
     '/vdr': 'vdr',
-    '/chat': 'chat',
+    '/ai-chat': 'ai-chat',
     '/analytics': 'analytics',
     '/valuation': 'valuation',
     '/reports': 'reports',

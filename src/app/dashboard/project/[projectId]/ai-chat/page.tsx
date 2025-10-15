@@ -11,7 +11,7 @@ export default function ProjectChatRedirectPage() {
   useEffect(() => {
     if (projectId) {
       // Automatically redirect to a new chat session when a user clicks the main "Ask" tab
-      router.replace(`/dashboard/project/${projectId}/chat/new`);
+      router.replace(`/dashboard/project/${projectId}/ai-chat/new`);
     }
   }, [projectId, router]);
 
