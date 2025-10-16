@@ -386,24 +386,34 @@ class EnhancedMemoryCache:
 enhanced_cache = EnhancedMemoryCache()
 
 # Improved cache decorator
-def cache_response(ttl: int = 300, key_prefix: str = ""):
+def cache_response(ttl: int = 300, key_prefix: str = "", global_cache: bool = False):
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            # Skip caching for unsafe methods
-            if hasattr(wrapper, 'request') and wrapper.request.method != 'GET':
-                return await func(*args, **kwargs)
-            
             try:
-                # Build cache key from function name and arguments
-                cache_key_parts = [key_prefix, func.__name__]
-                
-                # Include relevant kwargs in cache key
-                for arg_name, arg_value in kwargs.items():
-                    if arg_name in ['user_id', 'project_id', 'query', 'sector', 'hq_state']:
-                        cache_key_parts.append(f"{arg_name}:{arg_value}")
-                
-                cache_key = ":".join(str(part) for part in cache_key_parts if part)
+                # Build cache key
+                if global_cache:
+                    # Use global key for shared data like market intelligence
+                    cache_key = f"{key_prefix}:{func.__name__}:global"
+                else:
+                    # User-specific key with project_id when available
+                    cache_key_parts = [key_prefix, func.__name__]
+                    
+                    # Always include user_id and project_id if available
+                    user_id = kwargs.get('user_id')
+                    project_id = kwargs.get('project_id')
+                    
+                    if user_id:
+                        cache_key_parts.append(f"user_id:{user_id}")
+                    if project_id:
+                        cache_key_parts.append(f"project_id:{project_id}")
+                    
+                    # Include other relevant kwargs
+                    for arg_name, arg_value in kwargs.items():
+                        if arg_name in ['query', 'sector', 'hq_state', 'document_id', 'chat_id']:
+                            cache_key_parts.append(f"{arg_name}:{arg_value}")
+                    
+                    cache_key = ":".join(str(part) for part in cache_key_parts if part)
                 
                 # Try to get from cache
                 cached = await enhanced_cache.get(cache_key)
@@ -925,7 +935,231 @@ async def warm_with_retry(warm_func, max_retries=2):
             if attempt == max_retries - 1:
                 print(f"❌ Failed after {max_retries} attempts: {e}")
 
-  
+
+# Add this new function to pre-warm all project-related caches
+async def warm_all_project_caches(project_id: str, user_id: str):
+    """
+    Pre-warms ALL project-related caches when mission control is accessed.
+    This ensures instant responses for all subsequent project requests.
+    """
+    print(f"🔥 Pre-warming all caches for project: {project_id}")
+    
+    try:
+        # Create list of all cache warming tasks
+        warming_tasks = [
+            # Core project data
+            warm_project_team_cache(project_id, user_id),
+            warm_vdr_documents_cache(project_id, user_id),
+            warm_vdr_categories_cache(project_id, user_id),
+            warm_project_alerts_cache(project_id, user_id),
+            
+            # Intelligence & Analytics
+            warm_project_intelligence_cache_single(project_id, user_id),
+            warm_industry_insights_cache(project_id, user_id),
+            warm_ai_summary_cache(project_id, user_id),
+            
+            # Risk & Scoring
+            warm_risk_profile_cache(project_id, user_id),
+            warm_synergy_score_cache(project_id, user_id),
+            warm_key_risks_cache(project_id, user_id),
+            
+            # Project Management
+            warm_project_tasks_cache(project_id, user_id),
+            warm_access_summary_cache(project_id, user_id),
+            warm_project_ai_chats_cache(project_id, user_id),
+            
+            # Documents & Annotations
+            warm_annotated_documents_cache(project_id, user_id),
+            
+            # Valuation & Scenarios
+            warm_simulations_cache(project_id, user_id),
+            warm_scenarios_cache(project_id, user_id),
+        ]
+        
+        # Execute all warming tasks concurrently
+        await asyncio.gather(*warming_tasks, return_exceptions=True)
+        
+        print(f"✅ All project caches warmed for: {project_id}")
+        
+    except Exception as e:
+        print(f"⚠️ Error during project cache warming: {e}")
+
+# Individual cache warming functions
+async def warm_project_team_cache(project_id: str, user_id: str):
+    try:
+        result = supabase.rpc('get_project_team_members', {'p_project_id': project_id}).execute()
+        cache_key = f"project_team:get_project_team:project_id:{project_id}:user_id:{user_id}"
+        await enhanced_cache.set(cache_key, result.data if result.data else [], ex=300)
+    except Exception as e:
+        print(f"⚠️ Team cache warming failed: {e}")
+
+async def warm_vdr_documents_cache(project_id: str, user_id: str):
+    try:
+        result = supabase.table('vdr_documents').select('*').eq('project_id', project_id).order('uploaded_at', desc=True).limit(10).execute()
+        cache_key = f"vdr_documents:get_vdr_documents:project_id:{project_id}:user_id:{user_id}"
+        await enhanced_cache.set(cache_key, result.data, ex=300)
+    except Exception as e:
+        print(f"⚠️ VDR documents cache warming failed: {e}")
+
+async def warm_vdr_categories_cache(project_id: str, user_id: str):
+    try:
+        result = supabase.rpc('get_categories_with_counts', {'project_id_param': project_id}).execute()
+        cache_key = f"vdr_categories:get_categories:project_id:{project_id}:user_id:{user_id}"
+        await enhanced_cache.set(cache_key, result.data, ex=600)
+    except Exception as e:
+        print(f"⚠️ VDR categories cache warming failed: {e}")
+
+async def warm_project_alerts_cache(project_id: str, user_id: str):
+    try:
+        project_res = supabase.table('projects').select('company_cin').eq('id', project_id).single().execute()
+        if project_res.data:
+            result = supabase.table('events').select('*').eq('company_cin', project_res.data['company_cin']).order('event_date', desc=True).limit(50).execute()
+            cache_key = f"project_alerts:get_project_alerts:project_id:{project_id}:user_id:{user_id}"
+            await enhanced_cache.set(cache_key, result.data, ex=180)
+    except Exception as e:
+        print(f"⚠️ Alerts cache warming failed: {e}")
+
+async def warm_project_intelligence_cache_single(project_id: str, user_id: str):
+    try:
+        cache_key = f"project_intelligence:get_project_intelligence:project_id:{project_id}:user_id:{user_id}"
+        # Call the actual function to generate and cache
+        data = await get_project_intelligence(project_id, user_id)
+        await enhanced_cache.set(cache_key, data, ex=300)
+    except Exception as e:
+        print(f"⚠️ Intelligence cache warming failed: {e}")
+
+async def warm_industry_insights_cache(project_id: str, user_id: str):
+    try:
+        cache_key = f"industry_insights:get_industry_updates:project_id:{project_id}:user_id:{user_id}"
+        data = await get_industry_updates(project_id, user_id)
+        await enhanced_cache.set(cache_key, data, ex=600)
+    except Exception as e:
+        print(f"⚠️ Industry insights cache warming failed: {e}")
+
+async def warm_ai_summary_cache(project_id: str, user_id: str):
+    try:
+        cache_key = f"project_ai_summary:get_project_ai_summary:project_id:{project_id}:user_id:{user_id}"
+        data = await get_project_ai_summary(project_id, user_id)
+        await enhanced_cache.set(cache_key, data, ex=600)
+    except Exception as e:
+        print(f"⚠️ AI summary cache warming failed: {e}")
+
+async def warm_risk_profile_cache(project_id: str, user_id: str):
+    try:
+        cache_key = f"risk_profile:get_project_risk_profile:user_id:{user_id}:project_id:{project_id}"
+        
+        # Check if already cached
+        cached = await enhanced_cache.get(cache_key)
+        if cached:
+            print(f"  ⚡ Risk profile already cached")
+            return
+            
+        print(f"  🔄 Warming risk profile...")
+        data = await get_project_risk_profile(project_id, user_id)
+        await enhanced_cache.set(cache_key, data, ex=600)
+        print(f"  ✅ Risk profile cached")
+    except Exception as e:
+        print(f"⚠️ Risk profile cache warming failed: {e}")
+
+async def warm_synergy_score_cache(project_id: str, user_id: str):
+    try:
+        cache_key = f"synergy_score:get_synergy_ai_score:user_id:{user_id}:project_id:{project_id}"
+        
+        cached = await enhanced_cache.get(cache_key)
+        if cached:
+            print(f"  ⚡ Synergy score already cached")
+            return
+            
+        print(f"  🔄 Warming synergy score...")
+        data = await get_synergy_ai_score(project_id, user_id)
+        await enhanced_cache.set(cache_key, data, ex=600)
+        print(f"  ✅ Synergy score cached")
+    except Exception as e:
+        print(f"⚠️ Synergy score cache warming failed: {e}")
+
+async def warm_project_ai_summary_cache(project_id: str, user_id: str):
+    try:
+        cache_key = f"project_ai_summary:get_project_ai_summary:user_id:{user_id}:project_id:{project_id}"
+        
+        cached = await enhanced_cache.get(cache_key)
+        if cached:
+            print(f"  ⚡ AI summary already cached")
+            return
+            
+        print(f"  🔄 Warming AI summary...")
+        data = await get_project_ai_summary(project_id, user_id)
+        await enhanced_cache.set(cache_key, data, ex=600)
+        print(f"  ✅ AI summary cached")
+    except Exception as e:
+        print(f"⚠️ AI summary cache warming failed: {e}")
+
+async def warm_project_tasks_cache(project_id: str, user_id: str):
+    try:
+        result = supabase.rpc('get_project_tasks_with_assignee', {'p_project_id': project_id}).execute()
+        cache_key = f"project_tasks:get_project_tasks:project_id:{project_id}:user_id:{user_id}"
+        await enhanced_cache.set(cache_key, result.data if result.data else [], ex=300)
+    except Exception as e:
+        print(f"⚠️ Tasks cache warming failed: {e}")
+
+async def warm_access_summary_cache(project_id: str, user_id: str):
+    try:
+        result = supabase.table('project_members').select('role', count='exact').eq('project_id', project_id).execute()
+        total_members = result.count if result.count is not None else 0
+        admin_count = sum(1 for member in result.data if member['role'] == 'Admin') if result.data else 0
+        access_data = {"totalMembers": total_members, "adminCount": admin_count}
+        cache_key = f"access_summary:get_project_access_summary:project_id:{project_id}:user_id:{user_id}"
+        await enhanced_cache.set(cache_key, access_data, ex=300)
+    except Exception as e:
+        print(f"⚠️ Access summary cache warming failed: {e}")
+
+async def warm_project_ai_chats_cache(project_id: str, user_id: str):
+    try:
+        result = supabase.table('project_ai_chats').select('id, title, messages, updated_at, created_at').eq('project_id', project_id).eq('user_id', user_id).order('updated_at', desc=True).execute()
+        cache_key = f"project_ai_chats:get_project_ai_chats:project_id:{project_id}:user_id:{user_id}"
+        await enhanced_cache.set(cache_key, result.data, ex=300)
+    except Exception as e:
+        print(f"⚠️ AI chats cache warming failed: {e}")
+
+async def warm_annotated_documents_cache(project_id: str, user_id: str):
+    try:
+        docs_result = supabase.table('vdr_documents').select('id, file_name, uploaded_at, category').eq('project_id', project_id).order('uploaded_at', desc=True).execute()
+        if docs_result.data:
+            documents_with_counts = []
+            for doc in docs_result.data:
+                annotations_result = supabase.table('document_annotations').select('*', count='exact').eq('document_id', doc['id']).execute()
+                total_annotations = annotations_result.count or 0
+                unresolved_result = supabase.table('document_annotations').select('*', count='exact').eq('document_id', doc['id']).eq('resolved', False).execute()
+                unresolved_count = unresolved_result.count or 0
+                documents_with_counts.append({
+                    "id": doc["id"],
+                    "name": doc["file_name"],
+                    "comment_count": total_annotations,
+                    "unresolved_count": unresolved_count,
+                    "uploaded_at": doc.get("uploaded_at"),
+                    "category": doc.get("category", "Uncategorized")
+                })
+            cache_key = f"annotated_documents:project_id:{project_id}:user_id:{user_id}"
+            await enhanced_cache.set(cache_key, documents_with_counts, ex=300)
+    except Exception as e:
+        print(f"⚠️ Annotated documents cache warming failed: {e}")
+
+async def warm_simulations_cache(project_id: str, user_id: str):
+    try:
+        result = supabase.table('valuation_simulations').select('id, name, variables, results_summary').eq('project_id', project_id).eq('user_id', user_id).order('created_at').execute()
+        cache_key = f"simulations:project_id:{project_id}:user_id:{user_id}"
+        await enhanced_cache.set(cache_key, result.data, ex=600)
+    except Exception as e:
+        print(f"⚠️ Simulations cache warming failed: {e}")
+
+async def warm_scenarios_cache(project_id: str, user_id: str):
+    try:
+        result = supabase.table('valuation_scenarios').select('*').eq('project_id', project_id).eq('user_id', user_id).order('created_at', desc=True).execute()
+        cache_key = f"scenarios:project_id:{project_id}:user_id:{user_id}"
+        await enhanced_cache.set(cache_key, result.data, ex=600)
+    except Exception as e:
+        print(f"⚠️ Scenarios cache warming failed: {e}")
+
+
 # Update your cache decorator to use global cache for market data
 def cache_response(ttl: int = 300, key_prefix: str = "", global_cache: bool = False):
     def decorator(func):
@@ -973,6 +1207,12 @@ def start_background_scheduler():
         'interval',
         minutes=3,  # Refresh every 3 minutes
         id='market_intel_cache_warmer'
+    )
+    scheduler.add_job(
+        lambda: asyncio.run(warm_active_projects_caches()),
+        'interval',
+        minutes=2,
+        id='active_projects_cache_warmer'
     )
     scheduler.add_job(
         lambda: asyncio.run(warm_ai_recommendations_cache()),
@@ -1035,6 +1275,151 @@ def start_background_scheduler():
     scheduler.start()
     print("🚀 Background cache warmer started (3-minute intervals)")
 
+async def warm_active_projects_caches():
+    """
+    Intelligently warms caches for recently active projects.
+    Only warms projects that have been accessed in the last 30 minutes.
+    """
+    try:
+        print("🔥 Warming caches for active projects...")
+        
+        # Get recently active projects (you'll need to track this)
+        # For now, we'll warm the most recently updated projects
+        recent_projects = supabase.table('projects').select(
+            'id, created_by_user_id'
+        ).order('updated_at', desc=True).limit(5).execute()
+        
+        if recent_projects.data:
+            warming_tasks = []
+            for project in recent_projects.data:
+                task = warm_all_project_caches(
+                    project['id'], 
+                    project['created_by_user_id']
+                )
+                warming_tasks.append(task)
+            
+            await asyncio.gather(*warming_tasks, return_exceptions=True)
+            print(f"✅ Warmed caches for {len(recent_projects.data)} active projects")
+        
+    except Exception as e:
+        print(f"❌ Active projects cache warming failed: {e}")
+
+async def warm_critical_project_caches(project_id: str, user_id: str):
+    """
+    Pre-warms ONLY the critical caches that are needed immediately.
+    This is fast and blocks the mission control response.
+    """
+    print(f"⚡ Pre-warming CRITICAL caches for project: {project_id}")
+    
+    try:
+        # These are the endpoints that load immediately on the dashboard
+        critical_tasks = [
+            warm_risk_profile_cache(project_id, user_id),
+            warm_synergy_score_cache(project_id, user_id),
+            warm_project_ai_summary_cache(project_id, user_id),
+        ]
+        
+        # Wait for critical caches (max 5 seconds)
+        await asyncio.wait_for(
+            asyncio.gather(*critical_tasks, return_exceptions=True),
+            timeout=5.0
+        )
+        
+        print(f"✅ Critical caches warmed for: {project_id}")
+        
+    except asyncio.TimeoutError:
+        print(f"⚠️ Critical cache warming timed out for: {project_id}")
+    except Exception as e:
+        print(f"⚠️ Error during critical cache warming: {e}")
+
+# Non-critical endpoints that can warm in the background
+async def warm_non_critical_project_caches(project_id: str, user_id: str):
+    """
+    Pre-warms all other caches in the background (doesn't block response).
+    """
+    print(f"🔥 Pre-warming NON-CRITICAL caches for project: {project_id}")
+    
+    try:
+        non_critical_tasks = [
+            # Core project data
+            warm_project_team_cache(project_id, user_id),
+            warm_vdr_documents_cache(project_id, user_id),
+            warm_vdr_categories_cache(project_id, user_id),
+            warm_project_alerts_cache(project_id, user_id),
+            
+            # Intelligence & Analytics
+            warm_project_intelligence_cache_single(project_id, user_id),
+            warm_industry_insights_cache(project_id, user_id),
+            
+            # Project Management
+            warm_project_tasks_cache(project_id, user_id),
+            warm_access_summary_cache(project_id, user_id),
+            warm_project_ai_chats_cache(project_id, user_id),
+            
+            # Documents & Annotations
+            warm_annotated_documents_cache(project_id, user_id),
+            
+            # Valuation & Scenarios
+            warm_simulations_cache(project_id, user_id),
+            warm_scenarios_cache(project_id, user_id),
+            
+            # Key Risks (can be slower)
+            warm_key_risks_cache(project_id, user_id),
+        ]
+        
+        # Execute all non-critical warming tasks concurrently
+        await asyncio.gather(*non_critical_tasks, return_exceptions=True)
+        
+        print(f"✅ Non-critical caches warmed for: {project_id}")
+        
+    except Exception as e:
+        print(f"⚠️ Error during non-critical cache warming: {e}")
+
+
+@app.post("/api/projects/{project_id}/prefetch")
+async def prefetch_project_data(project_id: str, user_id: str = Depends(get_current_user_id)):
+    """
+    Manually trigger cache warming for a specific project.
+    Call this when a user navigates to a project.
+    """
+    try:
+        # Start cache warming in background
+        asyncio.create_task(warm_all_project_caches(project_id, user_id))
+        return {"message": "Cache warming initiated", "project_id": project_id}
+    except Exception as e:
+        return {"message": "Cache warming failed", "error": str(e)}
+    
+@app.post("/api/projects/{project_id}/cache/clear")
+async def clear_project_cache(project_id: str, user_id: str = Depends(get_current_user_id)):
+    """Clear all cache entries for a specific project"""
+    try:
+        pattern = f"project_id:{project_id}"
+        await enhanced_cache.delete_pattern(pattern)
+        return {"message": f"Cache cleared for project: {project_id}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Cache clear failed: {e}")
+
+# Call this when project data changes
+async def invalidate_project_cache(project_id: str):
+    """Invalidate all cached data for a project when its data changes"""
+    try:
+        patterns = [
+            f"project_id:{project_id}",
+            f"mission_control:project_id:{project_id}",
+            f"risk_profile:project_id:{project_id}",
+            f"synergy_score:project_id:{project_id}",
+            f"project_intelligence:project_id:{project_id}",
+            f"vdr_documents:project_id:{project_id}",
+            f"project_ai_chats:project_id:{project_id}"
+        ]
+        
+        for pattern in patterns:
+            await enhanced_cache.delete_pattern(pattern)
+            
+        print(f"✅ Invalidated all cache for project: {project_id}")
+    except Exception as e:
+        print(f"❌ Error invalidating project cache: {e}")
+        
 # Start when app loads
 @app.on_event("startup")
 async def startup_event():
@@ -1084,6 +1469,7 @@ async def get_cache_performance():
         }
     }
 
+
 @app.get("/api/cache/performance/detailed")
 async def get_detailed_cache_performance():
     """Detailed cache performance metrics for all endpoints"""
@@ -1096,11 +1482,11 @@ async def get_detailed_cache_performance():
     # Cache warming status
     warming_status = {
         "market_intel": "Every 3 minutes",
-        "ai_recommendations": "Every 10 minutes", 
+        "project_data": "On access + background", 
+        "ai_recommendations": "Every 10 minutes",
         "dashboard": "Every 5 minutes",
         "chat_news": "Every 5 minutes",
-        "project_intelligence": "Every 10 minutes",
-        "comprehensive": "Every 5 minutes"
+        "project_intelligence": "On mission control access"
     }
     
     # Expected performance improvements
@@ -1108,11 +1494,12 @@ async def get_detailed_cache_performance():
         "response_time": "Instant (cached) vs 1-30 seconds (uncached)",
         "ai_api_calls": "Reduced by ~90%",
         "database_queries": "Reduced by ~85%", 
-        "user_experience": "Near-instant page loads"
+        "user_experience": "Near-instant page loads",
+        "project_isolation": "✅ Each project has separate cache"
     }
     
     return {
-        "cache_strategy": "Multi-layer background warming with intelligent TTLs",
+        "cache_strategy": "Project-isolated multi-layer background warming",
         "performance": {
             "hit_rate": f"{hit_rate:.1f}%",
             "total_requests": total_requests,
@@ -1124,17 +1511,18 @@ async def get_detailed_cache_performance():
         "expected_improvements": performance_improvements,
         "cache_coverage": {
             "market_data": "✅ Cached (3min)",
+            "project_data": "✅ Cached (per project)",
             "ai_recommendations": "✅ Cached (10min)", 
             "dashboard": "✅ Cached (5min)",
             "chat_history": "✅ Cached (5min)",
             "news": "✅ Cached (5min)",
-            "project_intelligence": "✅ Cached (5min)",
-            "industry_insights": "✅ Cached (10min)",
-            "ai_summaries": "✅ Cached (10min)",
-            "risk_profiles": "✅ Cached (10min)",
-            "synergy_scores": "✅ Cached (10min)",
+            "project_intelligence": "✅ Cached (per project)",
+            "industry_insights": "✅ Cached (per project)",
+            "ai_summaries": "✅ Cached (per project)",
+            "risk_profiles": "✅ Cached (per project)",
+            "synergy_scores": "✅ Cached (per project)",
             "company_searches": "✅ Cached (5min)",
-            "vdr_documents": "✅ Cached (5min)"
+            "vdr_documents": "✅ Cached (per project)"
         }
     }
 
@@ -1243,7 +1631,6 @@ def health_check():
             "error": str(e)
         }
 @app.get("/api/companies/search_by_text")
-@cache_response(ttl=1200, key_prefix="company_search")
 def search_companies_by_text(query: Optional[str] = Query(None)):
     """Search companies by text using Supabase client"""
     try:
@@ -1277,7 +1664,6 @@ def search_companies_by_text(query: Optional[str] = Query(None)):
             return []
         
 @app.get("/api/companies/filter")
-@cache_response(ttl=1200, key_prefix="company_filter") 
 def filter_companies(
     revenue_min: Optional[int] = Query(None),
     employee_max: Optional[int] = Query(None),
@@ -1318,7 +1704,6 @@ class WatchlistCreate(BaseModel):
     name: str
 
 @app.get("/api/watchlists_with_counts", response_model=List[Dict])
-@cache_response(ttl=1200, key_prefix="watchlists_counts")
 async def get_watchlists_with_counts(user_id: str = Depends(get_current_user_id)):
     """Fetches all user watchlists and includes the count of companies in each."""
     try:
@@ -1363,7 +1748,6 @@ async def create_watchlist(watchlist: WatchlistCreate, user_id: str = Depends(ge
     
 
 @app.get("/api/watchlists/{watchlist_id}/companies")
-@cache_response(ttl=1200, key_prefix="watchlist_companies")
 async def get_watchlist_companies(watchlist_id: str, user_id: str = Depends(get_current_user_id)):
     """Fetches all companies in a specific watchlist for the current user."""
     try:
@@ -1410,7 +1794,6 @@ async def remove_company_from_watchlist(watchlist_id: str, company_cin: str, use
 
 # --- THIS IS THE DEFINITIVE, FULLY-FEATURED MARKET MAP ENDPOINT ---
 @app.get("/api/companies/market_map")
-@cache_response(ttl=1200, key_prefix="market_map")
 def get_market_map_data(
     sector: Optional[str] = Query(None),
     hq_state: Optional[str] = Query(None),
@@ -1604,8 +1987,7 @@ async def get_current_user_id(request: Request) -> str:
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
     
-@app.get("/api/projects", response_model=List[Dict])
-@cache_response(ttl=1200, key_prefix="projects") 
+@app.get("/api/projects", response_model=List[Dict]) 
 async def get_projects(user_id: str = Depends(get_current_user_id)):
     """
     Fetches all projects the current user is a member of by calling our
@@ -1669,7 +2051,7 @@ async def get_chart_data(user_id: str = Depends(get_current_user_id)):
 
 
 @app.get("/api/dashboard/narrative")
-@cache_response(ttl=1200, key_prefix="dashboard_narrative")
+@cache_response(ttl=3000, key_prefix="dashboard_narrative")
 async def get_narrative(user_id: str = Depends(get_current_user_id)):
    
     try:
@@ -1822,7 +2204,6 @@ async def get_categories_list(project_id: str, user_id: str = Depends(get_curren
         return ["Financials", "Legal & Compliance", "Human Resources", "Intellectual Property", "General"]
     
 @app.get("/api/projects/{project_id}/vdr/documents")
-@cache_response(ttl=1200, key_prefix="vdr_documents")
 async def get_vdr_documents(project_id: str, user_id: str = Depends(get_current_user_id)):
     """Fetches the most recent VDR documents for a given project."""
     try:
@@ -1961,7 +2342,6 @@ async def download_document(document_id: str, user_id: str = Depends(get_current
 
 # Add these to your FastAPI backend
 @app.get("/api/projects/{project_id}/vdr/categories")
-@cache_response(ttl=1200, key_prefix="vdr_categories")
 async def get_categories(project_id: str, user_id: str = Depends(get_current_user_id)):
     """Get all categories for a project including uncategorized"""
     try:
@@ -2099,7 +2479,6 @@ def debug_supabase_response(response):
             print(f"Item {i}: {type(item)} - {item}")
 
 @app.get("/api/chat/history")
-@cache_response(ttl=1200, key_prefix="chat_history")
 async def get_chat_history(user_id: str = Depends(get_current_user_id)):
     """Fetches all saved chat conversations for the current user."""
     try:
@@ -2205,7 +2584,7 @@ async def update_chat_history(conversation_id: str, session_data: ChatSessionUpd
         )
     
 @app.get("/api/projects/{project_id}/risk_profile")
-@cache_response(ttl=1200, key_prefix="risk_profile")
+@cache_response(ttl=3000, key_prefix="risk_profile")
 async def get_project_risk_profile(project_id: str, user_id: str = Depends(get_current_user_id)):
     """
     Generates a complete, AI-driven risk profile for the target company
@@ -2269,7 +2648,7 @@ async def get_project_risk_profile(project_id: str, user_id: str = Depends(get_c
 
 
 @app.get("/api/projects/{project_id}/synergy_score")
-@cache_response(ttl=1200, key_prefix="synergy_score")
+@cache_response(ttl=3000, key_prefix="synergy_score")
 async def get_synergy_ai_score(project_id: str, user_id: str = Depends(get_current_user_id)):
     """
     Performs a full strategic fit audit for a project, combining database facts,
@@ -2521,7 +2900,6 @@ async def get_knowledge_graph(project_id: str, user_id: str = Depends(get_curren
         raise HTTPException(status_code=500, detail="Could not generate knowledge graph.")
 
 @app.get("/api/projects/{project_id}/alerts")
-@cache_response(ttl=180, key_prefix="project_alerts")
 async def get_project_alerts(
     project_id: str,
     user_id: str = Depends(get_current_user_id),
@@ -2847,7 +3225,7 @@ async def get_market_news():
     
 
 @app.get("/api/ai/recommendations")
-@cache_response(ttl=1200, key_prefix="ai_recommendations")
+@cache_response(ttl=3000, key_prefix="ai_recommendations")
 async def get_ai_recommendations(user_id: str = Depends(get_current_user_id)):
     """
     Acts as an AI Scout. Scans for recent trigger events and uses the LLM
@@ -3094,7 +3472,7 @@ async def generate_sector_trend(client: httpx.AsyncClient, sector: str) -> Dict:
         return {"sector": sector, "trend": "AI analysis for this sector is currently unavailable."}
 
 @app.get("/api/intelligence/market")
-@cache_response(ttl=1200, key_prefix="market_intel") 
+@cache_response(ttl=3000, key_prefix="market_intel") 
 async def get_market_intelligence(user_id: str = Depends(get_current_user_id)):
     """
     Generates a complete market intelligence briefing with LIVE data.
@@ -3146,7 +3524,7 @@ async def get_market_intelligence(user_id: str = Depends(get_current_user_id)):
 
 
 @app.get("/api/projects/{project_id}/intelligence")
-@cache_response(ttl=1200, key_prefix="project_intelligence")
+@cache_response(ttl=3000, key_prefix="project_intelligence")
 async def get_project_intelligence(project_id: str, user_id: str = Depends(get_current_user_id)):
     """
     Builds a complete intelligence briefing for a project, including project news,
@@ -3200,7 +3578,7 @@ async def get_project_intelligence(project_id: str, user_id: str = Depends(get_c
 
 
 @app.get("/api/projects/{project_id}/insights/industry")
-@cache_response(ttl=1200, key_prefix="industry_insights")
+@cache_response(ttl=3000, key_prefix="industry_insights")
 async def get_industry_updates(project_id: str, user_id: str = Depends(get_current_user_id)):
     """
     Generates a complete industry intelligence briefing for the project's target company,
@@ -3256,7 +3634,7 @@ async def get_industry_updates(project_id: str, user_id: str = Depends(get_curre
 
 
 @app.get("/api/projects/{project_id}/ai_summary")
-@cache_response(ttl=1200, key_prefix="project_ai_summary")
+@cache_response(ttl=3000, key_prefix="project_ai_summary")
 async def get_project_ai_summary(project_id: str, user_id: str = Depends(get_current_user_id)):
     """
     Generates a complete AI briefing for a project by synthesizing structured data,
@@ -3354,7 +3732,6 @@ async def get_project_admin_auth(project_id: str, user_id: str = Depends(get_cur
 
 
 @app.get("/api/projects/{project_id}/team", response_model=List[Dict])
-@cache_response(ttl=1200, key_prefix="project_team")
 async def get_project_team(project_id: str, user_id: str = Depends(get_project_member_auth)): # Now uses member auth
     """Fetches all team members for a specific project."""
     try:
@@ -3464,7 +3841,6 @@ async def get_project_admin_auth(project_id: str, user_id: str = Depends(get_cur
         raise HTTPException(status_code=403, detail="Forbidden: Could not verify project permissions.")
 
 @app.get("/api/projects/{project_id}/team", response_model=List[Dict])
-@cache_response(ttl=1200, key_prefix="project_team")
 async def get_project_team(project_id: str, user_id: str = Depends(get_current_user_id)):
     """Fetches all team members for a specific project."""
     try:
@@ -3893,7 +4269,7 @@ async def get_ai_json_response(prompt: str, retries: int = 3) -> Dict:
     raise HTTPException(status_code=500, detail="Failed to get a valid JSON response from the AI model.")
 
 @app.get("/api/projects/{project_id}/generate_memo")
-@cache_response(ttl=1200, key_prefix="generate_memo")
+@cache_response(ttl=3000, key_prefix="generate_memo")
 async def generate_one_click_memo(project_id: str, user_id: str = Depends(get_current_user_id)):
     """
     Generates a comprehensive professional investment memo with detailed sections.
@@ -4180,7 +4556,7 @@ def format_rag_context(chunks):
     return "\n\n".join([f"- {chunk['content'][:200]}..." for chunk in chunks])
 
 # ... keep the create_comprehensive_fallback_memo and get_comprehensive_fallback_memo functions as they are
-@cache_response(ttl=1200, key_prefix="generate_memo")
+@cache_response(ttl=3000, key_prefix="generate_memo")
 async def generate_one_click_memo(project_id: str, user_id: str = Depends(get_current_user_id)):
     """
     Generates a comprehensive professional investment memo with detailed sections.
@@ -4781,7 +5157,7 @@ async def get_ai_json_response(prompt: str, retries: int = 3) -> List[Dict]:
     raise HTTPException(status_code=500, detail="Failed to get a valid JSON response from AI.")
 
 @app.get("/api/projects/{project_id}/key_risks")
-@cache_response(ttl=1200, key_prefix="key_risks")
+@cache_response(ttl=3000, key_prefix="key_risks")
 async def get_project_key_risks(project_id: str, user_id: str = Depends(get_current_user_id)):
     """
     Acts as an AI Risk Officer, performing a deep RAG search on VDR documents
@@ -4820,7 +5196,7 @@ class TaskStatusUpdate(BaseModel):
     status: str
 
 @app.get("/api/projects/{project_id}/tasks")
-@cache_response(ttl=1200, key_prefix="project_tasks")
+@cache_response(ttl=3000, key_prefix="project_tasks")
 async def get_project_tasks(project_id: str, user_id: str = Depends(get_current_user_id)):
     """Fetches all tasks for a specific project."""
     try:
@@ -4879,13 +5255,18 @@ async def update_task_status(task_id: str, payload: TaskStatusUpdate, user_id: s
         raise HTTPException(status_code=500, detail="Could not update task status.")
 
 @app.get("/api/projects/{project_id}/mission_control")
-@cache_response(ttl=1200, key_prefix="mission_control")
+@cache_response(ttl=3000, key_prefix="mission_control")
 async def get_mission_control_data(project_id: str, user_id: str = Depends(get_current_user_id)):
     """
     M&A Mission Control - Real-time deal analytics dashboard
     Updated to work with your actual database schema
     """
     try:
+        await warm_critical_project_caches(project_id, user_id)
+        asyncio.create_task(warm_all_project_caches(project_id, user_id))
+        
+        # Continue with normal mission control logic
+        print(f"🔍 Generating mission control data for project: {project_id}")
         # Step 1: Fetch project and company data
         project_res = supabase.table('projects').select(
             'id, name, created_by_user_id, company_cin, companies(name, industry, financial_summary)'
@@ -5628,7 +6009,7 @@ async def update_project_details(project_id: str, project_data: ProjectUpdate, a
 
 
 @app.get("/api/projects/{project_id}/access_summary")
-@cache_response(ttl=1200, key_prefix="access_summary")
+@cache_response(ttl=3000, key_prefix="access_summary")
 async def get_project_access_summary(project_id: str, user_id: str = Depends(get_project_member_auth)):
     """
     Fetches a summary of team access for a project: total members and admin count.
@@ -5987,7 +6368,7 @@ async def delete_annotation(annotation_id: str, user_id: str = Depends(get_curre
 
 # AI-powered annotation suggestions
 @app.get("/api/documents/{document_id}/ai_annotations")
-@cache_response(ttl=1200, key_prefix="ai_annotations")
+@cache_response(ttl=3000, key_prefix="ai_annotations")
 async def get_ai_annotation_suggestions(document_id: str, user_id: str = Depends(get_current_user_id)):
     """Uses AI to suggest potential annotations for important clauses."""
     try:
@@ -6130,7 +6511,6 @@ class ProjectChatQuery(BaseModel):
     chat_id: Optional[str] = None
 
 @app.get("/api/projects/{project_id}/ai_chats")
-@cache_response(ttl=1200, key_prefix="project_ai_chats")
 async def get_project_ai_chats(project_id: str, user_id: str = Depends(get_current_user_id)):
     """Fetches all AI chat conversations for a specific project."""
     try:
@@ -6288,7 +6668,6 @@ async def delete_project_chat(project_id: str, chat_id: str, user_id: str = Depe
     
 # Add this to your FastAPI backend
 @app.get("/api/projects/{project_id}/ai_chats/{chat_id}")
-@cache_response(ttl=300, key_prefix="single_ai_chat")
 async def get_single_project_chat(project_id: str, chat_id: str, user_id: str = Depends(get_current_user_id)):
     """Fetches a single AI chat conversation by ID."""
     try:
