@@ -20,7 +20,7 @@ export const projectNavItems: NavItem[] = [
   { id: 'vdr', name: 'Project VDR', href: '/vdr', icon: ShieldCheck },
   { id: 'ai-chat', name: 'Project AI Co-Pilot', href: '/ai-chat', icon: MessageCircle },
   { id: 'analytics', name: 'Analytics & Risk', href: '/analytics', icon: BarChart },
-  { id: 'valuation', name: 'Valuation', href: '/valuation', icon: Calculator },
+  { id: 'valuation', name: 'Valuation', href: '/valuation/scenarios', icon: Calculator },
   { id: 'reports', name: 'Reports', href: '/reports', icon: FileText },
   { id: 'team', name: 'Team & Permissions', href: '/team', icon: Users }
 ];
@@ -132,7 +132,7 @@ export const featureConfig: Record<string, FeatureConfig> = {
       { name: 'Upload', href: '/vdr' },
       { name: 'Categories', href: '/vdr/categories' },
       { name: 'Search', href: '/vdr/search' },
-      { name: 'Annotations', href: '/vdr/annotations' },
+      // { name: 'Annotations', href: '/vdr/annotations' },
       { name: 'Q&A', href: '/vdr/qa' },
     ]
   },
@@ -155,8 +155,8 @@ export const featureConfig: Record<string, FeatureConfig> = {
   'valuation': {
     title: 'Valuation & Models',
     subFeatures: [
-      { name: 'Templates', href: '/valuation' },
-      { name: 'Live Models', href: '/valuation/models' },
+      // { name: 'Templates', href: '/valuation' },
+      // { name: 'Live Models', href: '/valuation/models' },
       { name: 'Scenarios', href: '/valuation/scenarios' },
       { name: 'Monte Carlo', href: '/valuation/mc' },
       // { name: 'Synergies', href: '/valuation/synergies' },

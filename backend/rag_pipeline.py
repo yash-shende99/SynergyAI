@@ -1,3 +1,25 @@
+# ===== SSL FIX FOR RAG SYSTEM =====
+import os
+import ssl
+import urllib3
+
+# Disable SSL verification for development
+os.environ['HF_HUB_DISABLE_SSL_VERIFICATION'] = '1'
+os.environ['PYTHONHTTPSVERIFY'] = '0'
+os.environ['CURL_CA_BUNDLE'] = ''
+os.environ['REQUESTS_CA_BUNDLE'] = ''
+
+# Disable SSL verification
+ssl._create_default_https_context = ssl._create_unverified_context
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# For requests library
+try:
+    import requests
+    requests.packages.urllib3.disable_warnings()
+except:
+    pass
+# ===================================
 import faiss
 import pickle
 from sentence_transformers import SentenceTransformer

@@ -961,7 +961,7 @@ async def warm_all_project_caches(project_id: str, user_id: str):
             # Risk & Scoring
             warm_risk_profile_cache(project_id, user_id),
             warm_synergy_score_cache(project_id, user_id),
-            warm_key_risks_cache(project_id, user_id),
+            # warm_key_risks_cache(project_id, user_id),
             
             # Project Management
             warm_project_tasks_cache(project_id, user_id),
@@ -2051,7 +2051,7 @@ async def get_chart_data(user_id: str = Depends(get_current_user_id)):
 
 
 @app.get("/api/dashboard/narrative")
-@cache_response(ttl=3000, key_prefix="dashboard_narrative")
+@cache_response(ttl=6000, key_prefix="dashboard_narrative")
 async def get_narrative(user_id: str = Depends(get_current_user_id)):
    
     try:
@@ -2584,7 +2584,7 @@ async def update_chat_history(conversation_id: str, session_data: ChatSessionUpd
         )
     
 @app.get("/api/projects/{project_id}/risk_profile")
-@cache_response(ttl=3000, key_prefix="risk_profile")
+@cache_response(ttl=6000, key_prefix="risk_profile")
 async def get_project_risk_profile(project_id: str, user_id: str = Depends(get_current_user_id)):
     """
     Generates a complete, AI-driven risk profile for the target company
@@ -2648,7 +2648,7 @@ async def get_project_risk_profile(project_id: str, user_id: str = Depends(get_c
 
 
 @app.get("/api/projects/{project_id}/synergy_score")
-@cache_response(ttl=3000, key_prefix="synergy_score")
+@cache_response(ttl=6000, key_prefix="synergy_score")
 async def get_synergy_ai_score(project_id: str, user_id: str = Depends(get_current_user_id)):
     """
     Performs a full strategic fit audit for a project, combining database facts,
@@ -2746,7 +2746,6 @@ Response (JSON object only):
         return fallback_response
     
 @app.get("/api/projects/{project_id}/knowledge_graph")
-@cache_response(ttl=1200, key_prefix="knowledge_graph")
 async def get_knowledge_graph(project_id: str, user_id: str = Depends(get_current_user_id)):
     """
     Builds the complete relationship graph for a project's target company.
@@ -3154,7 +3153,6 @@ async def download_document(document_id: str, user_id: str = Depends(get_current
 
 
 @app.get("/api/news/projects")
-@cache_response(ttl=1200, key_prefix="projects_news")
 async def get_projects_news(user_id: str = Depends(get_current_user_id)):
     """Fetches the latest news for all projects the user is a member of."""
     try:
@@ -3171,7 +3169,6 @@ async def get_projects_news(user_id: str = Depends(get_current_user_id)):
 
 
 @app.get("/api/news/market")
-@cache_response(ttl=1200, key_prefix="market_news")
 async def get_market_news(user_id: str = Depends(get_current_user_id)):
     """Fetches the latest news from all companies in the database."""
     try:
@@ -3188,7 +3185,6 @@ async def get_market_news(user_id: str = Depends(get_current_user_id)):
 news_service = NewsService()
 
 @app.get("/api/news/live")
-@cache_response(ttl=1200, key_prefix="live_news")
 async def get_live_combined_news(user_id: str = Depends(get_current_user_id)):
     """Get combined live market news and project news"""
     try:
@@ -3205,7 +3201,6 @@ async def get_live_combined_news(user_id: str = Depends(get_current_user_id)):
         raise HTTPException(status_code=500, detail=f"News fetch error: {str(e)}")
 
 @app.get("/api/news/projects")
-@cache_response(ttl=1200, key_prefix="projects_news")
 async def get_projects_news(user_id: str = Depends(get_current_user_id)):
     """Get only project-specific news"""
     try:
@@ -3225,7 +3220,7 @@ async def get_market_news():
     
 
 @app.get("/api/ai/recommendations")
-@cache_response(ttl=3000, key_prefix="ai_recommendations")
+@cache_response(ttl=6000, key_prefix="ai_recommendations")
 async def get_ai_recommendations(user_id: str = Depends(get_current_user_id)):
     """
     Acts as an AI Scout. Scans for recent trigger events and uses the LLM
@@ -3472,7 +3467,7 @@ async def generate_sector_trend(client: httpx.AsyncClient, sector: str) -> Dict:
         return {"sector": sector, "trend": "AI analysis for this sector is currently unavailable."}
 
 @app.get("/api/intelligence/market")
-@cache_response(ttl=3000, key_prefix="market_intel") 
+@cache_response(ttl=6000, key_prefix="market_intel") 
 async def get_market_intelligence(user_id: str = Depends(get_current_user_id)):
     """
     Generates a complete market intelligence briefing with LIVE data.
@@ -3524,7 +3519,7 @@ async def get_market_intelligence(user_id: str = Depends(get_current_user_id)):
 
 
 @app.get("/api/projects/{project_id}/intelligence")
-@cache_response(ttl=3000, key_prefix="project_intelligence")
+@cache_response(ttl=6000, key_prefix="project_intelligence")
 async def get_project_intelligence(project_id: str, user_id: str = Depends(get_current_user_id)):
     """
     Builds a complete intelligence briefing for a project, including project news,
@@ -3578,7 +3573,7 @@ async def get_project_intelligence(project_id: str, user_id: str = Depends(get_c
 
 
 @app.get("/api/projects/{project_id}/insights/industry")
-@cache_response(ttl=3000, key_prefix="industry_insights")
+@cache_response(ttl=6000, key_prefix="industry_insights")
 async def get_industry_updates(project_id: str, user_id: str = Depends(get_current_user_id)):
     """
     Generates a complete industry intelligence briefing for the project's target company,
@@ -3634,7 +3629,7 @@ async def get_industry_updates(project_id: str, user_id: str = Depends(get_curre
 
 
 @app.get("/api/projects/{project_id}/ai_summary")
-@cache_response(ttl=3000, key_prefix="project_ai_summary")
+@cache_response(ttl=6000, key_prefix="project_ai_summary")
 async def get_project_ai_summary(project_id: str, user_id: str = Depends(get_current_user_id)):
     """
     Generates a complete AI briefing for a project by synthesizing structured data,
@@ -4269,7 +4264,7 @@ async def get_ai_json_response(prompt: str, retries: int = 3) -> Dict:
     raise HTTPException(status_code=500, detail="Failed to get a valid JSON response from the AI model.")
 
 @app.get("/api/projects/{project_id}/generate_memo")
-@cache_response(ttl=3000, key_prefix="generate_memo")
+@cache_response(ttl=6000, key_prefix="generate_memo")
 async def generate_one_click_memo(project_id: str, user_id: str = Depends(get_current_user_id)):
     """
     Generates a comprehensive professional investment memo with detailed sections.
@@ -4556,7 +4551,7 @@ def format_rag_context(chunks):
     return "\n\n".join([f"- {chunk['content'][:200]}..." for chunk in chunks])
 
 # ... keep the create_comprehensive_fallback_memo and get_comprehensive_fallback_memo functions as they are
-@cache_response(ttl=3000, key_prefix="generate_memo")
+@cache_response(ttl=6000, key_prefix="generate_memo")
 async def generate_one_click_memo(project_id: str, user_id: str = Depends(get_current_user_id)):
     """
     Generates a comprehensive professional investment memo with detailed sections.
@@ -5157,7 +5152,7 @@ async def get_ai_json_response(prompt: str, retries: int = 3) -> List[Dict]:
     raise HTTPException(status_code=500, detail="Failed to get a valid JSON response from AI.")
 
 @app.get("/api/projects/{project_id}/key_risks")
-@cache_response(ttl=3000, key_prefix="key_risks")
+@cache_response(ttl=6000, key_prefix="key_risks")
 async def get_project_key_risks(project_id: str, user_id: str = Depends(get_current_user_id)):
     """
     Acts as an AI Risk Officer, performing a deep RAG search on VDR documents
@@ -5255,7 +5250,7 @@ async def update_task_status(task_id: str, payload: TaskStatusUpdate, user_id: s
         raise HTTPException(status_code=500, detail="Could not update task status.")
 
 @app.get("/api/projects/{project_id}/mission_control")
-@cache_response(ttl=3000, key_prefix="mission_control")
+@cache_response(ttl=6000, key_prefix="mission_control")
 async def get_mission_control_data(project_id: str, user_id: str = Depends(get_current_user_id)):
     """
     M&A Mission Control - Real-time deal analytics dashboard
@@ -5611,13 +5606,9 @@ class ProjectStatusHistory(BaseModel):
 # Available status options (customize based on your M&A workflow)
 STATUS_OPTIONS = [
     "Sourcing",
-    "Preliminary Analysis", 
-    "Due Diligence",
-    "Negotiation",
-    "Final Approval",
-    "Completed",
-    "On Hold",
-    "Cancelled"
+    "Diligence",  # Changed from "Due Diligence" to match frontend
+    "Negotiation", 
+    "Completed"
 ]
 
 @app.get("/api/projects/{project_id}/status/options")
@@ -5989,27 +5980,50 @@ async def get_project_details(project_id: str, user_id: str = Depends(get_curren
     except Exception as e:
         print(f"Error fetching project details: {e}")
         raise HTTPException(status_code=500, detail="Could not fetch project details.")
-
+    
 @app.put("/api/projects/{project_id}")
-async def update_project_details(project_id: str, project_data: ProjectUpdate, admin_id: str = Depends(get_project_admin_auth)):
+async def update_project_details(project_id: str, project_data: ProjectUpdate, user_id: str = Depends(get_current_user_id)):
     """
-    Updates the core details of a project. This is a protected endpoint
-    that can only be called by a project admin.
+    Updates the core details of a project using RPC function.
     """
     try:
-        update_data = {
-            "name": project_data.name,
-            "status": project_data.status
+        print(f"🔧 Updating project {project_id} with data: {project_data}")
+        
+        # Validate status
+        if project_data.status not in STATUS_OPTIONS:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid status. Must be one of: {', '.join(STATUS_OPTIONS)}"
+            )
+
+        # Use RPC function to update
+        result = supabase.rpc('update_project_details', {
+            'p_project_id': project_id,
+            'p_name': project_data.name,
+            'p_status': project_data.status,
+            'p_user_id': user_id
+        }).execute()
+
+        print(f"🔧 RPC update result: {result}")
+
+        if not result.data or not result.data[0].get('success'):
+            error_msg = result.data[0].get('error', 'Update failed') if result.data else 'Update failed'
+            raise HTTPException(status_code=500, detail=error_msg)
+
+        return {
+            "message": "Project details updated successfully.",
+            "updated_id": project_id
         }
-        supabase.table('projects').update(update_data).eq('id', project_id).execute()
-        return {"message": "Project details updated successfully."}
+        
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Error updating project: {e}")
-        raise HTTPException(status_code=500, detail="Could not update project details.")
-
-
+        print(f"❌ Error updating project: {e}")
+        raise HTTPException(status_code=500, detail=f"Could not update project details: {str(e)}")
+    
+    
 @app.get("/api/projects/{project_id}/access_summary")
-@cache_response(ttl=3000, key_prefix="access_summary")
+@cache_response(ttl=6000, key_prefix="access_summary")
 async def get_project_access_summary(project_id: str, user_id: str = Depends(get_project_member_auth)):
     """
     Fetches a summary of team access for a project: total members and admin count.
@@ -6368,7 +6382,7 @@ async def delete_annotation(annotation_id: str, user_id: str = Depends(get_curre
 
 # AI-powered annotation suggestions
 @app.get("/api/documents/{document_id}/ai_annotations")
-@cache_response(ttl=3000, key_prefix="ai_annotations")
+@cache_response(ttl=6000, key_prefix="ai_annotations")
 async def get_ai_annotation_suggestions(document_id: str, user_id: str = Depends(get_current_user_id)):
     """Uses AI to suggest potential annotations for important clauses."""
     try:
