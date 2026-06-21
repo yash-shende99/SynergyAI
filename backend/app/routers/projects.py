@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Optional
 from app.core.config import supabase
 from app.core.security import get_current_user_id, get_project_member_auth, get_project_admin_auth
-from app.core.cache import enhanced_cache
+from app.core.redis_cache import redis_cache
 
 
 router = APIRouter(tags=["Projects"])
@@ -79,7 +79,7 @@ async def clear_project_cache(project_id: str, user_id: str = Depends(get_curren
     """Clear all cache entries for a specific project"""
     try:
         pattern = f"project_id:{project_id}"
-        await enhanced_cache.delete_pattern(pattern)
+        await redis_cache.delete_pattern(pattern)
         return {"message": f"Cache cleared for project: {project_id}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Cache clear failed: {e}")
@@ -99,7 +99,7 @@ async def invalidate_project_cache(project_id: str):
         ]
         
         for pattern in patterns:
-            await enhanced_cache.delete_pattern(pattern)
+            await redis_cache.delete_pattern(pattern)
             
         print(f"✅ Invalidated all cache for project: {project_id}")
     except Exception as e:

@@ -17,7 +17,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from app.core.config import supabase
-from app.core.cache import enhanced_cache
+from app.core.redis_cache import redis_cache
+from app.core.cache_decorator import cached, smart_cache
+from app.core.cache_warmer import cache_warmer
 from app.services.market import market_data, generate_sector_trend
 
 # Import AI queries dynamically or normally
@@ -53,7 +55,7 @@ app.include_router(auth.router)
 app.include_router(projects.router)
 app.include_router(vdr.router)
 app.include_router(ai.router)
-app.include_router(cache.router)
+# Old cache router removed, new cache endpoints added directly below
 
 # --- CACHE WARMING SERVICES & SCHEDULERS ---
 
@@ -123,7 +125,7 @@ async def warm_market_intel_cache_direct():
             for user in users_result.data:
                 user_id = user['id']
                 cache_key = f"market_intel:get_market_intelligence:user_id:{user_id}"
-                await enhanced_cache.set(cache_key, market_data_result, ex=300)
+                await redis_cache.set(cache_key, market_data_result, ttl=300)
             
             print(f"✅ Market intelligence cache warmed for {len(users_result.data)} users")
         else:
@@ -288,13 +290,13 @@ async def warm_comprehensive_cache():
                 projects_res = supabase.rpc('get_user_projects', {'p_user_id': user_id}).execute()
                 if projects_res.data:
                     cache_key = f"projects:get_projects:user_id:{user_id}"
-                    await enhanced_cache.set(cache_key, projects_res.data, ex=300)
+                    await redis_cache.set(cache_key, projects_res.data, ttl=300)
                 
                 # Warm watchlists counts
                 watchlists_res = supabase.rpc('get_user_watchlists_with_counts', {'p_user_id': user_id}).execute()
                 if watchlists_res.data:
                     cache_key = f"watchlists_counts:get_watchlists_with_counts:user_id:{user_id}"
-                    await enhanced_cache.set(cache_key, watchlists_res.data, ex=300)
+                    await redis_cache.set(cache_key, watchlists_res.data, ttl=300)
                 
                 # Warm chat history
                 chat_res = supabase.table('chat_conversations').select(
@@ -302,13 +304,13 @@ async def warm_comprehensive_cache():
                 ).eq('user_id', user_id).order('created_at', desc=True).execute()
                 if chat_res.data:
                     cache_key = f"chat_history:get_chat_history:user_id:{user_id}"
-                    await enhanced_cache.set(cache_key, chat_res.data, ex=300)
+                    await redis_cache.set(cache_key, chat_res.data, ttl=300)
                 
                 # Warm user profile
                 user_res = supabase.table('users').select('id, name, email, avatar_url:image').eq('id', user_id).single().execute()
                 if user_res.data:
                     cache_key = f"user_profile:get_current_user_profile:user_id:{user_id}"
-                    await enhanced_cache.set(cache_key, user_res.data, ex=300)
+                    await redis_cache.set(cache_key, user_res.data, ttl=300)
                 
                 print(f"✅ User caches warmed for: {user_id}")
             except Exception as user_error:
@@ -325,19 +327,19 @@ async def warm_comprehensive_cache():
                         team_res = supabase.rpc('get_project_team_members', {'p_project_id': project_id}).execute()
                         if team_res.data:
                             cache_key = f"project_team:get_project_team:project_id:{project_id}:user_id:{user_id}"
-                            await enhanced_cache.set(cache_key, team_res.data, ex=300)
+                            await redis_cache.set(cache_key, team_res.data, ttl=300)
                         
                         # Warm VDR documents
                         docs_res = supabase.table('vdr_documents').select('*').eq('project_id', project_id).order('uploaded_at', desc=True).limit(10).execute()
                         if docs_res.data:
                             cache_key = f"vdr_documents:get_vdr_documents:project_id:{project_id}:user_id:{user_id}"
-                            await enhanced_cache.set(cache_key, docs_res.data, ex=300)
+                            await redis_cache.set(cache_key, docs_res.data, ttl=300)
                         
                         # Warm VDR categories
                         cats_res = supabase.rpc('get_categories_with_counts', {'project_id_param': project_id}).execute()
                         if cats_res.data:
                             cache_key = f"vdr_categories:get_categories:project_id:{project_id}:user_id:{user_id}"
-                            await enhanced_cache.set(cache_key, cats_res.data, ex=600)
+                            await redis_cache.set(cache_key, cats_res.data, ttl=600)
                         
                         # Warm knowledge graph and alerts
                         kg_res = supabase.table('projects').select('company_cin').eq('id', project_id).single().execute()
@@ -345,13 +347,13 @@ async def warm_comprehensive_cache():
                             alerts_res = supabase.table('events').select('*').eq('company_cin', kg_res.data['company_cin']).order('event_date', desc=True).limit(50).execute()
                             if alerts_res.data:
                                 cache_key = f"project_alerts:get_project_alerts:project_id:{project_id}:user_id:{user_id}"
-                                await enhanced_cache.set(cache_key, alerts_res.data, ex=180)
+                                await redis_cache.set(cache_key, alerts_res.data, ttl=180)
                         
                         # Warm AI chats
                         chats_res = supabase.table('project_ai_chats').select('id, title, messages, updated_at, created_at').eq('project_id', project_id).eq('user_id', user_id).order('updated_at', desc=True).execute()
                         if chats_res.data:
                             cache_key = f"project_ai_chats:get_project_ai_chats:project_id:{project_id}:user_id:{user_id}"
-                            await enhanced_cache.set(cache_key, chats_res.data, ex=300)
+                            await redis_cache.set(cache_key, chats_res.data, ttl=300)
                         
                         # Warm project user profile
                         user_profile_res = supabase.table('users').select('name, email').eq('id', user_id).execute()
@@ -371,13 +373,13 @@ async def warm_comprehensive_cache():
                                 "avatar_url": None
                             }
                             cache_key = f"project_user_profile:get_project_user_profile:project_id:{project_id}:user_id:{user_id}"
-                            await enhanced_cache.set(cache_key, user_profile_data, ex=300)
+                            await redis_cache.set(cache_key, user_profile_data, ttl=300)
 
                         # Warm project tasks
                         tasks_res = supabase.rpc('get_project_tasks_with_assignee', {'p_project_id': project_id}).execute()
                         if tasks_res.data:
                             cache_key = f"project_tasks:get_project_tasks:project_id:{project_id}:user_id:{user_id}"
-                            await enhanced_cache.set(cache_key, tasks_res.data, ex=300)
+                            await redis_cache.set(cache_key, tasks_res.data, ttl=300)
                         
                         # Warm access summary
                         access_res = supabase.table('project_members').select('role', count='exact').eq('project_id', project_id).execute()
@@ -386,7 +388,7 @@ async def warm_comprehensive_cache():
                             admin_count = sum(1 for member in access_res.data if member['role'] == 'Admin')
                             access_data = {"totalMembers": total_members, "adminCount": admin_count}
                             cache_key = f"access_summary:get_project_access_summary:project_id:{project_id}:user_id:{user_id}"
-                            await enhanced_cache.set(cache_key, access_data, ex=300)
+                            await redis_cache.set(cache_key, access_data, ttl=300)
                         
                         print(f"✅ Project caches warmed for project: {project_id}")
                     except Exception as project_error:
@@ -454,7 +456,7 @@ async def warm_project_team_cache(project_id: str, user_id: str):
     try:
         result = supabase.rpc('get_project_team_members', {'p_project_id': project_id}).execute()
         cache_key = f"project_team:get_project_team:project_id:{project_id}:user_id:{user_id}"
-        await enhanced_cache.set(cache_key, result.data if result.data else [], ex=300)
+        await redis_cache.set(cache_key, result.data if result.data else [], ttl=300)
     except Exception as e:
         print(f"⚠️ Team cache warming failed: {e}")
 
@@ -462,7 +464,7 @@ async def warm_vdr_documents_cache(project_id: str, user_id: str):
     try:
         result = supabase.table('vdr_documents').select('*').eq('project_id', project_id).order('uploaded_at', desc=True).limit(10).execute()
         cache_key = f"vdr_documents:get_vdr_documents:project_id:{project_id}:user_id:{user_id}"
-        await enhanced_cache.set(cache_key, result.data, ex=300)
+        await redis_cache.set(cache_key, result.data, ttl=300)
     except Exception as e:
         print(f"⚠️ VDR documents cache warming failed: {e}")
 
@@ -470,7 +472,7 @@ async def warm_vdr_categories_cache(project_id: str, user_id: str):
     try:
         result = supabase.rpc('get_categories_with_counts', {'project_id_param': project_id}).execute()
         cache_key = f"vdr_categories:get_categories:project_id:{project_id}:user_id:{user_id}"
-        await enhanced_cache.set(cache_key, result.data, ex=600)
+        await redis_cache.set(cache_key, result.data, ttl=600)
     except Exception as e:
         print(f"⚠️ VDR categories cache warming failed: {e}")
 
@@ -480,7 +482,7 @@ async def warm_project_alerts_cache(project_id: str, user_id: str):
         if project_res.data:
             result = supabase.table('events').select('*').eq('company_cin', project_res.data['company_cin']).order('event_date', desc=True).limit(50).execute()
             cache_key = f"project_alerts:get_project_alerts:project_id:{project_id}:user_id:{user_id}"
-            await enhanced_cache.set(cache_key, result.data, ex=180)
+            await redis_cache.set(cache_key, result.data, ttl=180)
     except Exception as e:
         print(f"⚠️ Alerts cache warming failed: {e}")
 
@@ -488,7 +490,7 @@ async def warm_project_intelligence_cache_single(project_id: str, user_id: str):
     try:
         cache_key = f"project_intelligence:get_project_intelligence:project_id:{project_id}:user_id:{user_id}"
         data = await get_project_intelligence(project_id, user_id)
-        await enhanced_cache.set(cache_key, data, ex=300)
+        await redis_cache.set(cache_key, data, ttl=300)
     except Exception as e:
         print(f"⚠️ Intelligence cache warming failed: {e}")
 
@@ -496,7 +498,7 @@ async def warm_industry_insights_cache(project_id: str, user_id: str):
     try:
         cache_key = f"industry_insights:get_industry_updates:project_id:{project_id}:user_id:{user_id}"
         data = await get_industry_updates(project_id, user_id)
-        await enhanced_cache.set(cache_key, data, ex=600)
+        await redis_cache.set(cache_key, data, ttl=600)
     except Exception as e:
         print(f"⚠️ Industry insights cache warming failed: {e}")
 
@@ -504,21 +506,21 @@ async def warm_ai_summary_cache(project_id: str, user_id: str):
     try:
         cache_key = f"project_ai_summary:get_project_ai_summary:project_id:{project_id}:user_id:{user_id}"
         data = await get_project_ai_summary(project_id, user_id)
-        await enhanced_cache.set(cache_key, data, ex=600)
+        await redis_cache.set(cache_key, data, ttl=600)
     except Exception as e:
         print(f"⚠️ AI summary cache warming failed: {e}")
 
 async def warm_risk_profile_cache(project_id: str, user_id: str):
     try:
         cache_key = f"risk_profile:get_project_risk_profile:user_id:{user_id}:project_id:{project_id}"
-        cached = await enhanced_cache.get(cache_key)
+        cached = await redis_cache.get(cache_key)
         if cached:
             print(f"  ⚡ Risk profile already cached")
             return
             
         print(f"  🔄 Warming risk profile...")
         data = await get_project_risk_profile(project_id, user_id)
-        await enhanced_cache.set(cache_key, data, ex=600)
+        await redis_cache.set(cache_key, data, ttl=600)
         print(f"  ✅ Risk profile cached")
     except Exception as e:
         print(f"⚠️ Risk profile cache warming failed: {e}")
@@ -526,14 +528,14 @@ async def warm_risk_profile_cache(project_id: str, user_id: str):
 async def warm_synergy_score_cache(project_id: str, user_id: str):
     try:
         cache_key = f"synergy_score:get_synergy_ai_score:user_id:{user_id}:project_id:{project_id}"
-        cached = await enhanced_cache.get(cache_key)
+        cached = await redis_cache.get(cache_key)
         if cached:
             print(f"  ⚡ Synergy score already cached")
             return
             
         print(f"  🔄 Warming synergy score...")
         data = await get_synergy_ai_score(project_id, user_id)
-        await enhanced_cache.set(cache_key, data, ex=600)
+        await redis_cache.set(cache_key, data, ttl=600)
         print(f"  ✅ Synergy score cached")
     except Exception as e:
         print(f"⚠️ Synergy score cache warming failed: {e}")
@@ -541,14 +543,14 @@ async def warm_synergy_score_cache(project_id: str, user_id: str):
 async def warm_project_ai_summary_cache(project_id: str, user_id: str):
     try:
         cache_key = f"project_ai_summary:get_project_ai_summary:user_id:{user_id}:project_id:{project_id}"
-        cached = await enhanced_cache.get(cache_key)
+        cached = await redis_cache.get(cache_key)
         if cached:
             print(f"  ⚡ AI summary already cached")
             return
             
         print(f"  🔄 Warming AI summary...")
         data = await get_project_ai_summary(project_id, user_id)
-        await enhanced_cache.set(cache_key, data, ex=600)
+        await redis_cache.set(cache_key, data, ttl=600)
         print(f"  ✅ AI summary cached")
     except Exception as e:
         print(f"⚠️ AI summary cache warming failed: {e}")
@@ -557,7 +559,7 @@ async def warm_project_tasks_cache(project_id: str, user_id: str):
     try:
         result = supabase.rpc('get_project_tasks_with_assignee', {'p_project_id': project_id}).execute()
         cache_key = f"project_tasks:get_project_tasks:project_id:{project_id}:user_id:{user_id}"
-        await enhanced_cache.set(cache_key, result.data if result.data else [], ex=300)
+        await redis_cache.set(cache_key, result.data if result.data else [], ttl=300)
     except Exception as e:
         print(f"⚠️ Tasks cache warming failed: {e}")
 
@@ -568,7 +570,7 @@ async def warm_access_summary_cache(project_id: str, user_id: str):
         admin_count = sum(1 for member in result.data if member['role'] == 'Admin') if result.data else 0
         access_data = {"totalMembers": total_members, "adminCount": admin_count}
         cache_key = f"access_summary:get_project_access_summary:project_id:{project_id}:user_id:{user_id}"
-        await enhanced_cache.set(cache_key, access_data, ex=300)
+        await redis_cache.set(cache_key, access_data, ttl=300)
     except Exception as e:
         print(f"⚠️ Access summary cache warming failed: {e}")
 
@@ -576,7 +578,7 @@ async def warm_project_ai_chats_cache(project_id: str, user_id: str):
     try:
         result = supabase.table('project_ai_chats').select('id, title, messages, updated_at, created_at').eq('project_id', project_id).eq('user_id', user_id).order('updated_at', desc=True).execute()
         cache_key = f"project_ai_chats:get_project_ai_chats:project_id:{project_id}:user_id:{user_id}"
-        await enhanced_cache.set(cache_key, result.data, ex=300)
+        await redis_cache.set(cache_key, result.data, ttl=300)
     except Exception as e:
         print(f"⚠️ AI chats cache warming failed: {e}")
 
@@ -599,7 +601,7 @@ async def warm_annotated_documents_cache(project_id: str, user_id: str):
                     "category": doc.get("category", "Uncategorized")
                 })
             cache_key = f"annotated_documents:project_id:{project_id}:user_id:{user_id}"
-            await enhanced_cache.set(cache_key, documents_with_counts, ex=300)
+            await redis_cache.set(cache_key, documents_with_counts, ttl=300)
     except Exception as e:
         print(f"⚠️ Annotated documents cache warming failed: {e}")
 
@@ -607,7 +609,7 @@ async def warm_simulations_cache(project_id: str, user_id: str):
     try:
         result = supabase.table('valuation_simulations').select('id, name, variables, results_summary').eq('project_id', project_id).eq('user_id', user_id).order('created_at').execute()
         cache_key = f"simulations:project_id:{project_id}:user_id:{user_id}"
-        await enhanced_cache.set(cache_key, result.data, ex=600)
+        await redis_cache.set(cache_key, result.data, ttl=600)
     except Exception as e:
         print(f"⚠️ Simulations cache warming failed: {e}")
 
@@ -615,7 +617,7 @@ async def warm_scenarios_cache(project_id: str, user_id: str):
     try:
         result = supabase.table('valuation_scenarios').select('*').eq('project_id', project_id).eq('user_id', user_id).order('created_at', desc=True).execute()
         cache_key = f"scenarios:project_id:{project_id}:user_id:{user_id}"
-        await enhanced_cache.set(cache_key, result.data, ex=600)
+        await redis_cache.set(cache_key, result.data, ttl=600)
     except Exception as e:
         print(f"⚠️ Scenarios cache warming failed: {e}")
 
@@ -754,23 +756,38 @@ def start_background_scheduler():
 
 @app.on_event("startup")
 async def startup_event():
-    # Start background thread for cache warming
-    thread = threading.Thread(target=start_background_scheduler, daemon=True)
-    thread.start()
+    """Initialize all services"""
+    # Start cache warmer
+    cache_warmer.start()
     
-    # Warm cache immediately on startup
-    asyncio.create_task(warm_market_intel_cache())
-    await asyncio.gather(
-        warm_market_intel_cache_direct(),
-        warm_ai_recommendations_cache(),
-        warm_dashboard_cache(),
-        warm_chat_and_news_cache(),
-        warm_project_intelligence_cache(),
-        warm_ai_analysis_cache(),
-        warm_document_ai_cache(),
-        warm_ai_chats_cache(),
-        warm_mission_control_cache(),
-        warm_comprehensive_cache(),
-        return_exceptions=True
-    )
-    print("✅ All caches warmed on startup!")
+    # Warm critical caches immediately
+    asyncio.create_task(cache_warmer.warm_all_active_users())
+    
+    print("✅ All cache services initialized")
+
+@app.post("/api/cache/warm/{user_id}")
+async def warm_user_cache_manually(user_id: str, admin_key: str):
+    """Manually warm cache for a user (admin only)"""
+    if admin_key != os.getenv('ADMIN_KEY', 'synergy_admin_secure_key_123'):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    
+    await cache_warmer.warm_user_cache(user_id)
+    return {"message": f"Cache warming initiated for user: {user_id}"}
+
+@app.get("/api/cache/stats")
+async def cache_stats():
+    """Get cache performance metrics"""
+    return {
+        "hits": smart_cache.hit_count,
+        "misses": smart_cache.miss_count,
+        "hit_rate": f"{smart_cache.hit_count / max(1, (smart_cache.hit_count + smart_cache.miss_count)) * 100:.1f}%",
+        "redis_connected": bool(redis_cache.redis_client)
+    }
+
+@app.post("/api/cache/clear")
+async def clear_all_cache():
+    """Emergency cache clear"""
+    await redis_cache.delete_pattern("*")
+    smart_cache.memory_cache.clear()
+    return {"message": "All cache cleared"}

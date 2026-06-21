@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from app.core.config import supabase, OLLAMA_SERVER_URL, CUSTOM_MODEL_NAME
 from app.core.security import get_current_user_id
-from app.core.cache import cache_response
+from app.core.cache_decorator import cached
 from rag_pipeline import rag_system
 
 
@@ -635,7 +635,7 @@ async def delete_annotation(annotation_id: str, user_id: str = Depends(get_curre
 
 
 @router.get("/api/documents/{document_id}/ai_annotations")
-@cache_response(ttl=6000, key_prefix="ai_annotations")
+@cached(request_type="ai_heavy")
 async def get_ai_annotation_suggestions(document_id: str, user_id: str = Depends(get_current_user_id)):
     """Uses AI to suggest potential annotations for important clauses."""
     try:

@@ -21,7 +21,7 @@ from reportlab.platypus import Paragraph
 
 from app.core.config import supabase, OLLAMA_SERVER_URL, CUSTOM_MODEL_NAME
 from app.core.security import get_current_user_id, get_project_member_auth, get_project_admin_auth
-from app.core.cache import cache_response, enhanced_cache
+from app.core.cache_decorator import cached
 from rag_pipeline import rag_system
 from app.services.news import news_service
 from app.services.market import market_data, generate_sector_trend
@@ -217,7 +217,7 @@ async def strategic_search(query: StrategicQuery):
     return StreamingResponse(score_and_stream(candidates, query.query), media_type="application/x-ndjson")
 
 @router.get("/api/dashboard/narrative")
-@cache_response(ttl=6000, key_prefix="dashboard_narrative")
+@cached(request_type="ai_heavy")
 async def get_narrative(user_id: str = Depends(get_current_user_id)):
     """Generates pipeline briefing narrative using RAG."""
     try:
@@ -283,7 +283,7 @@ async def export_summary_pdf(data: AI_Summary_Export):
         raise HTTPException(status_code=500, detail="Failed to generate PDF.")
 
 @router.get("/api/projects/{project_id}/risk_profile")
-@cache_response(ttl=6000, key_prefix="risk_profile")
+@cached(request_type="ai_heavy")
 async def get_project_risk_profile(project_id: str, user_id: str = Depends(get_current_user_id)):
     """Generates a complete, AI-driven risk profile for the target company."""
     try:
@@ -331,7 +331,7 @@ async def get_project_risk_profile(project_id: str, user_id: str = Depends(get_c
         raise HTTPException(status_code=500, detail="Could not generate risk profile.")
 
 @router.get("/api/projects/{project_id}/synergy_score")
-@cache_response(ttl=6000, key_prefix="synergy_score")
+@cached(request_type="ai_heavy")
 async def get_synergy_ai_score(project_id: str, user_id: str = Depends(get_current_user_id)):
     """Strategic fit and synergy scoring."""
     try:
@@ -732,7 +732,7 @@ async def delete_scenario(project_id: str, scenario_id: str, user_id: str = Depe
         raise HTTPException(status_code=500, detail="Could not delete scenario")
 
 @router.get("/api/projects/{project_id}/generate_memo")
-@cache_response(ttl=6000, key_prefix="generate_memo")
+@cached(request_type="ai_heavy")
 async def generate_one_click_memo(project_id: str, user_id: str = Depends(get_current_user_id)):
     """Generates detailed investment memos compiling VDR intelligence."""
     try:
@@ -829,7 +829,7 @@ async def generate_section(section_name: str, prompt: str, fallback: str) -> str
         return fallback
 
 @router.get("/api/projects/{project_id}/key_risks")
-@cache_response(ttl=6000, key_prefix="key_risks")
+@cached(request_type="ai_heavy")
 async def get_project_key_risks(project_id: str, user_id: str = Depends(get_current_user_id)):
     """Deep analysis of legal and financial risks in VDR documents."""
     try:
@@ -857,7 +857,7 @@ Response (JSON array only):
         raise HTTPException(status_code=500, detail="Could not generate AI-powered key risks.")
 
 @router.get("/api/projects/{project_id}/tasks")
-@cache_response(ttl=3000, key_prefix="project_tasks")
+@cached(request_type="ai_heavy")
 async def get_project_tasks(project_id: str, user_id: str = Depends(get_current_user_id)):
     """Get project tasks."""
     try:
@@ -919,7 +919,7 @@ async def update_task_status(task_id: str, payload: TaskStatusUpdate, user_id: s
         raise HTTPException(status_code=500, detail="Could not update task status.")
 
 @router.get("/api/projects/{project_id}/mission_control")
-@cache_response(ttl=6000, key_prefix="mission_control")
+@cached(request_type="ai_heavy")
 async def get_mission_control_data(project_id: str, user_id: str = Depends(get_current_user_id)):
     """Mission Control deal tracker compiler."""
     try:
@@ -1149,7 +1149,7 @@ async def get_current_status(project_id: str, user_id: str = Depends(get_current
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/api/projects/{project_id}/access_summary")
-@cache_response(ttl=6000, key_prefix="access_summary")
+@cached(request_type="ai_heavy")
 async def get_project_access_summary(project_id: str, user_id: str = Depends(get_project_member_auth)):
     """Count of members and admin access roles."""
     try:
@@ -1376,7 +1376,7 @@ async def get_live_combined_news(user_id: str = Depends(get_current_user_id)):
         raise HTTPException(status_code=500, detail="News fetch error")
 
 @router.get("/api/ai/recommendations")
-@cache_response(ttl=6000, key_prefix="ai_recommendations")
+@cached(request_type="ai_heavy")
 async def get_ai_recommendations(user_id: str = Depends(get_current_user_id)):
     try:
         thirty_days_ago = (datetime.utcnow() - timedelta(days=30)).isoformat()
@@ -1405,7 +1405,7 @@ async def get_ai_recommendations(user_id: str = Depends(get_current_user_id)):
         raise HTTPException(status_code=500, detail="Could not generate recommendations")
 
 @router.get("/api/intelligence/market")
-@cache_response(ttl=6000, key_prefix="market_intel") 
+@cached(request_type="ai_heavy") 
 async def get_market_intelligence(user_id: str = Depends(get_current_user_id)):
     try:
         indicators = await market_data.get_live_indices()
@@ -1431,7 +1431,7 @@ async def get_market_intelligence(user_id: str = Depends(get_current_user_id)):
         return {"indicators": market_data.get_fallback_indicators(), "sectorTrends": [{"sector": "Market", "trend": "Data temporarily unavailable"}], "topGainers": market_data.get_fallback_gainers(), "topLosers": market_data.get_fallback_losers(), "lastUpdated": datetime.now().isoformat(), "dataSource": "fallback"}
 
 @router.get("/api/projects/{project_id}/intelligence")
-@cache_response(ttl=6000, key_prefix="project_intelligence")
+@cached(request_type="ai_heavy")
 async def get_project_intelligence(project_id: str, user_id: str = Depends(get_current_user_id)):
     try:
         project_res = supabase.table('projects').select('company_cin, companies(name)').eq('id', project_id).single().execute()
@@ -1470,7 +1470,7 @@ async def get_project_intelligence(project_id: str, user_id: str = Depends(get_c
         raise HTTPException(status_code=500, detail="Could not fetch project intelligence")
 
 @router.get("/api/projects/{project_id}/insights/industry")
-@cache_response(ttl=6000, key_prefix="industry_insights")
+@cached(request_type="ai_heavy")
 async def get_industry_updates(project_id: str, user_id: str = Depends(get_current_user_id)):
     try:
         project_res = supabase.table('projects').select('companies(cin, name, industry)').eq('id', project_id).single().execute()
@@ -1498,7 +1498,7 @@ async def get_industry_updates(project_id: str, user_id: str = Depends(get_curre
         raise HTTPException(status_code=500, detail="Could not fetch industry updates")
 
 @router.get("/api/projects/{project_id}/ai_summary")
-@cache_response(ttl=6000, key_prefix="project_ai_summary")
+@cached(request_type="ai_heavy")
 async def get_project_ai_summary(project_id: str, user_id: str = Depends(get_current_user_id)):
     try:
         project_res = supabase.table('projects').select('company_cin, companies(*)').eq('id', project_id).single().execute()
