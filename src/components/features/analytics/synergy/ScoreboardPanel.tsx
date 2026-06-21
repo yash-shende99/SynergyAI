@@ -8,7 +8,7 @@ interface ScoreboardPanelProps {
   subScores: SynergySubScore[];
 }
 
-const ScoreboardPanel: FC<ScoreboardPanelProps> = ({ overallScore, subScores }) => (
+const ScoreboardPanel: FC<ScoreboardPanelProps> = ({ overallScore, subScores = [] }) => (
   <div className="p-6 rounded-xl border border-border bg-surface/50 h-full sticky top-6">
     <h3 className="font-bold text-white text-center">Overall SynergyAI Score</h3>
     <SynergyGauge score={overallScore} />

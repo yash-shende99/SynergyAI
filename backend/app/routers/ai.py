@@ -94,6 +94,10 @@ class AiLabRequest(BaseModel):
     note_ids: List[str]
     action: str  # 'summarize', 'find_themes', etc.
 
+class ChatSession(BaseModel):
+    project_id: Optional[str] = None
+    messages: List[Dict] = []
+
 STATUS_OPTIONS = ["Sourcing", "Diligence", "Negotiation", "Completed"]
 
 async def get_ai_json_response(prompt: str, retries: int = 3) -> Union[Dict, List]:
@@ -187,10 +191,13 @@ async def handle_ai_query(query: AIQuery):
 
     except httpx.RequestError as e:
         print(f"❌ HTTP Error: Could not connect to Ollama server. Is it running?")
-        raise HTTPException(status_code=503, detail="AI service is unavailable.")
+        return {"answer": "AI service is currently unreachable. Please ensure Ollama is running.", "sources": []}
+    except httpx.HTTPStatusError as e:
+        print(f"❌ Ollama returned an error (possibly Out Of Memory due to parallel requests): {e}")
+        return {"answer": "The AI model encountered an error (likely out of memory). If this persists, try reducing OLLAMA_NUM_PARALLEL.", "sources": []}
     except Exception as e:
         print(f"❌ An error occurred in the AI query pipeline: {e}")
-        raise HTTPException(status_code=500, detail="An internal error occurred.")
+        return {"answer": "An internal error occurred while processing your query.", "sources": []}
 
 @router.post("/api/companies/strategic_search")
 async def strategic_search(query: StrategicQuery):
@@ -369,6 +376,8 @@ Response (JSON object only):
         
         try:
             final_audit = json.loads(ai_response_text)
+            if "overallScore" not in final_audit:
+                raise ValueError("Missing overallScore")
         except json.JSONDecodeError:
             try:
                 json_match = re.search(r'\{[^{}]*\{[^{}]*\}[^{}]*\}|\{[^{}]*\}', ai_response_text, re.DOTALL)
@@ -381,10 +390,13 @@ Response (JSON object only):
                     cleaned_text = re.sub(r',\s*}', '}', cleaned_text)
                     cleaned_text = re.sub(r',\s*]', ']', cleaned_text)
                     final_audit = json.loads(cleaned_text)
-            except json.JSONDecodeError as e:
+                
+                if "overallScore" not in final_audit:
+                    raise ValueError("Missing overallScore")
+            except (json.JSONDecodeError, ValueError) as e:
                 print(f"JSON parsing failed, fallback used: {e}")
                 final_audit = {
-                    "overallScore": 75,
+                    "overallScore": 50,
                     "subScores": [
                         {"category": "Financial Synergy", "score": 70, "summary": "Moderate financial synergy potential based on available data"},
                         {"category": "Strategic Fit", "score": 80, "summary": "Good strategic alignment with current portfolio"},
@@ -398,7 +410,7 @@ Response (JSON object only):
     except Exception as e:
         print(f"Error generating SynergyAI Score: {e}")
         fallback_response = {
-            "overallScore": 70,
+            "overallScore": 50,
             "subScores": [
                 {"category": "Financial Synergy", "score": 65, "summary": "Analysis unavailable - service error"},
                 {"category": "Strategic Fit", "score": 70, "summary": "Analysis unavailable - service error"},
@@ -740,8 +752,10 @@ async def generate_one_click_memo(project_id: str, user_id: str = Depends(get_cu
         if not mission_control_data:
             raise HTTPException(status_code=404, detail="Project data not available")
         
-        risk_profile = await get_project_risk_profile(project_id, user_id)
-        synergy_score = await get_synergy_ai_score(project_id, user_id)
+        risk_profile, synergy_score = await asyncio.gather(
+            get_project_risk_profile(project_id, user_id),
+            get_synergy_ai_score(project_id, user_id)
+        )
         
         project = mission_control_data["project"]
         key_metrics = mission_control_data["keyMetrics"]
@@ -765,43 +779,49 @@ KEY METRICS:
 - EBITDA Margin: {key_metrics['financial']['ebitdaMargin']}
 - Employees: {key_metrics['financial']['employees']}
 """
-        sections = {}
+        section_tasks = [
+            generate_section(
+                section_name="Executive Summary",
+                prompt=f"Write a comprehensive executive summary for the acquisition of {company_name}. Focus on investment thesis, key metrics, and recommendation. {common_context}",
+                fallback=create_executive_summary_fallback(company_name, ai_recommendation, key_metrics)
+            ),
+            generate_section(
+                section_name="Valuation Analysis", 
+                prompt=f"Write a detailed valuation analysis for {company_name}. Include DCF methodology and CCA. {common_context}",
+                fallback=create_valuation_fallback(company_name, key_metrics)
+            ),
+            generate_section(
+                section_name="Synergy Assessment",
+                prompt=f"Write synergy assessment for {company_name}. Synergy Details: {synergy_score} {common_context}",
+                fallback=create_synergy_fallback(company_name, synergy_score)
+            ),
+            generate_section(
+                section_name="Risk Assessment",
+                prompt=f"Write risk assessment for {company_name}. Risk Details: {risk_profile} {common_context}",
+                fallback=create_risk_fallback(company_name, risk_profile)
+            ),
+            generate_section(
+                section_name="Strategic Rationale", 
+                prompt=f"Write strategic rationale for acquiring {company_name}. {common_context}",
+                fallback=create_strategic_fallback(company_name)
+            ),
+            generate_section(
+                section_name="Recommendations",
+                prompt=f"Write recommendations for {company_name}. {common_context}",
+                fallback=create_recommendation_fallback(company_name, ai_recommendation)
+            )
+        ]
         
-        sections["executiveSummary"] = await generate_section(
-            section_name="Executive Summary",
-            prompt=f"Write a comprehensive executive summary for the acquisition of {company_name}. Focus on investment thesis, key metrics, and recommendation. {common_context}",
-            fallback=create_executive_summary_fallback(company_name, ai_recommendation, key_metrics)
-        )
+        results = await asyncio.gather(*section_tasks)
         
-        sections["valuationSection"] = await generate_section(
-            section_name="Valuation Analysis", 
-            prompt=f"Write a detailed valuation analysis for {company_name}. Include DCF methodology and CCA. {common_context}",
-            fallback=create_valuation_fallback(company_name, key_metrics)
-        )
-        
-        sections["synergySection"] = await generate_section(
-            section_name="Synergy Assessment",
-            prompt=f"Write synergy assessment for {company_name}. Synergy Details: {synergy_score} {common_context}",
-            fallback=create_synergy_fallback(company_name, synergy_score)
-        )
-        
-        sections["riskSection"] = await generate_section(
-            section_name="Risk Assessment",
-            prompt=f"Write risk assessment for {company_name}. Risk Details: {risk_profile} {common_context}",
-            fallback=create_risk_fallback(company_name, risk_profile)
-        )
-        
-        sections["strategicRationale"] = await generate_section(
-            section_name="Strategic Rationale", 
-            prompt=f"Write strategic rationale for acquiring {company_name}. {common_context}",
-            fallback=create_strategic_fallback(company_name)
-        )
-        
-        sections["recommendationSection"] = await generate_section(
-            section_name="Recommendations",
-            prompt=f"Write recommendations for {company_name}. {common_context}",
-            fallback=create_recommendation_fallback(company_name, ai_recommendation)
-        )
+        sections = {
+            "executiveSummary": results[0],
+            "valuationSection": results[1],
+            "synergySection": results[2],
+            "riskSection": results[3],
+            "strategicRationale": results[4],
+            "recommendationSection": results[5]
+        }
 
         professional_memo = {
             "projectName": project_name,
@@ -1551,7 +1571,7 @@ async def get_chat_history(user_id: str = Depends(get_current_user_id)):
         raise HTTPException(status_code=500, detail="Could not fetch chat history.")
 
 @router.post("/api/chat/history")
-async def save_chat_history(session_data: BaseModel, user_id: str = Depends(get_current_user_id)):
+async def save_chat_history(session_data: ChatSession, user_id: str = Depends(get_current_user_id)):
     # Maps ChatSession properties
     data = session_data.model_dump()
     project_id = data.get('project_id')
@@ -1569,7 +1589,7 @@ async def save_chat_history(session_data: BaseModel, user_id: str = Depends(get_
         raise HTTPException(status_code=500, detail="Could not save chat history.")
 
 @router.put("/api/chat/history/{conversation_id}")
-async def update_chat_history(conversation_id: str, session_data: BaseModel, user_id: str = Depends(get_current_user_id)):
+async def update_chat_history(conversation_id: str, session_data: ChatSession, user_id: str = Depends(get_current_user_id)):
     data = session_data.model_dump()
     messages = data.get('messages', [])
     try:

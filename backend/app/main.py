@@ -49,7 +49,7 @@ def read_root():
     return {"status": "SynergyAI API is running."}
 
 # Include routers
-from app.routers import auth, projects, vdr, ai, cache
+from app.routers import auth, projects, vdr, ai
 
 app.include_router(auth.router)
 app.include_router(projects.router)

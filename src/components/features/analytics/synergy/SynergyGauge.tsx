@@ -6,7 +6,7 @@ const getColor = (s: number) => {
   return 'stroke-red-500 text-red-400';
 };
 
-const SynergyGauge: FC<{ score: number }> = ({ score }) => {
+const SynergyGauge: FC<{ score: number }> = ({ score = 0 }) => {
   const colorClasses = getColor(score);
   const circumference = 2 * Math.PI * 45;
   const strokeDashoffset = circumference - (score / 100) * circumference;

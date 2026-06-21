@@ -1,6 +1,7 @@
-import { FC } from 'react';
+import { FC, useRef } from 'react';
 import Link from 'next/link';
 import { Project, DealStatus } from '../../../types';
+import { supabase } from '../../../lib/supabaseClient';
 
 // --- THIS IS THE FIX ---
 // The props interface now correctly expects a 'project' of type 'Project'.
@@ -18,9 +19,27 @@ const getStatusColor = (status: DealStatus) => {
 };
 
 const DealKanbanCard: FC<DealKanbanCardProps> = ({ project }) => {
+  const hasPrefetched = useRef(false);
+
+  const handleMouseEnter = async () => {
+    if (hasPrefetched.current) return;
+    hasPrefetched.current = true;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      await fetch(`http://localhost:8000/api/projects/${project.id}/prefetch`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      });
+    } catch (e) {
+      console.error("Prefetch failed", e);
+    }
+  };
+
   return (
     <Link href={`/dashboard/project/${project.id}`}>
-    <div className="rounded-lg border border-border bg-surface/50 p-4 space-y-3">
+    <div onMouseEnter={handleMouseEnter} className="rounded-lg border border-border bg-surface/50 p-4 space-y-3 cursor-pointer hover:bg-surface/80 transition-colors">
       <span className={`px-2 py-1 text-xs font-semibold rounded-full border ${getStatusColor(project.status)}`}>
         {project.status}
       </span>
