@@ -9,6 +9,7 @@ import { Scenario } from '../../../../types'; // <-- Import our correct type
 // --- FIX #1: Use the full Scenario type for initial state ---
 const initialScenario: Scenario = { 
   id: 'scen-1', 
+  projectId: 'proj-1',
   name: 'Aggressive Growth Case', 
   projectName: 'Project Helios', 
   summary: '', 
@@ -35,7 +36,7 @@ export default function ScenariosSection() {
   return (
     <div className="space-y-6">
       {/* --- FIX #2: Pass the full 'scenario' object, not 'scenarioName' --- */}
-      <ScenarioHeader scenario={scenario} onSave={handleSave} onReset={handleReset} />
+      <ScenarioHeader scenario={scenario} onSave={handleSave} onReset={handleReset} onNameChange={(name) => setScenario({ ...scenario, name })} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
         <div className="lg:col-span-1">

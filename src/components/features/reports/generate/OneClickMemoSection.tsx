@@ -37,6 +37,7 @@ export default function OneClickMemoSection() {
   const handleSaveToDrafts = () => {
     const newDraft: Draft = {
       id: `draft-${Date.now()}`,
+      projectId: selectedProject || 'unknown',
       title: `Investment Memo: ${selectedProject}`,
       createdBy: { name: 'Yash Shende', avatarUrl: 'https://placehold.co/24x24/E2E8F0/111827?text=YS' },
       lastModified: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric'}),
@@ -56,14 +57,19 @@ export default function OneClickMemoSection() {
     setStep('selection');
   };
 
+  const mockMemo: any = {
+    id: `memo-${Date.now()}`,
+    projectName: selectedProject || 'Unknown Project',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    executiveSummary: 'Auto-generated executive summary...',
+    briefingCards: briefingData
+  };
+
   return (
     <>
       <MemoWorkspace
-        projectName={selectedProject!}
-        briefingData={briefingData}
-        onCardClick={(card) => setActiveModal(card)}
-        onSave={handleSaveToDrafts}
-        onExport={() => setIsExportModalOpen(true)}
+        memo={mockMemo}
         onGoBack={handleGoBackToSelection}
       />
       
@@ -83,6 +89,7 @@ export default function OneClickMemoSection() {
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
+        memo={mockMemo}
       />
     </>
   );

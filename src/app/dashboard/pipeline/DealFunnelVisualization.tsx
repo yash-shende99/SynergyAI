@@ -10,7 +10,7 @@ const DealFunnelVisualization: FC<{ projects: Project[] }> = ({ projects }) => {
   const statusCounts = projects.reduce((acc: Record<DealStatus, number>, p) => {
     acc[p.status] = (acc[p.status] || 0) + 1;
     return acc;
-  }, { 'Sourcing': 0, 'Diligence': 0, 'Negotiation': 0, 'Completed': 0 }); // The initial value is key
+  }, { 'Sourcing': 0, 'Diligence': 0, 'Negotiation': 0, 'Completed': 0, 'Archived': 0 } as Record<DealStatus, number>); // The initial value is key
 
   const option = {
     tooltip: { trigger: 'item', formatter: '{a} <br/>{b} : {c}' },
