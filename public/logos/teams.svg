@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="16" fill="#1A1D21"/>
+  <g transform="translate(15, 15) scale(0.7)">
+    <!-- Back shield -->
+    <path d="M48 20h22a6 6 0 0 1 6 6v48a6 6 0 0 1-6 6H48V20z" fill="#5059C9"/>
+    <!-- T box -->
+    <rect x="20" y="28" width="36" height="44" rx="4" fill="#464EB8"/>
+    <!-- letter T -->
+    <path d="M38 40h-8v4h8v20h5V44h8v-4h-13z" fill="#FFFFFF"/>
+    <!-- Group silhouette behind T box -->
+    <path d="M62 36c3.3 0 6-2.7 6-6s-2.7-6-6-6-6 2.7-6 6 2.7 6 6 6zm6 12H56v4h12c2.2 0 4 1.8 4 4v16h6V56c0-4.4-3.6-8-8-8z" fill="#7B83EB"/>
+  </g>
+</svg>

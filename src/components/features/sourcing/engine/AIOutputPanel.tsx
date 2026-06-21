@@ -31,10 +31,10 @@ const AIOutputPanel: FC<AIOutputPanelProps> = ({ results, isLoading, statusMessa
         {results.map(result => (
           <div key={result.company.id} className="flex items-center gap-4 p-4 rounded-lg bg-background/50 border border-border">
             <img 
-              src={result.company.logoUrl} 
+              src={result.company.logoUrl || '/placeholder-logo.svg'} 
               alt={`${result.company.name} logo`} 
               className="h-10 w-10 rounded-md bg-white p-1"
-              onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/40x40/111111/FFFFFF?text=N/A'; }}
+              onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-logo.svg'; }}
             />
             <div className="flex-1">
               <h4 className="font-bold text-white">{result.company.name}</h4>

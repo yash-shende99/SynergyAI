@@ -5,6 +5,7 @@ import { Company, Watchlist } from '../../../types';
 import { Button } from '../../ui/button';
 import { Star, Loader2, ChevronDown } from 'lucide-react';
 import { supabase } from '../../../lib/supabaseClient';
+import { handleLogoError } from '../../../lib/utils';
 
 interface CompanyProfilePreviewProps {
   company: Company | null;
@@ -55,7 +56,12 @@ const CompanyProfilePreview: FC<CompanyProfilePreviewProps> = ({ company, watchl
   return (
     <div className="h-full p-6 rounded-xl border border-border bg-surface/50 flex flex-col relative">
       <div className="flex items-center gap-4 pb-4 border-b border-border">
-        <img src={company.logoUrl} alt={`${company.name} logo`} className="h-16 w-16 rounded-lg bg-white p-1"/>
+        <img 
+          src={company.logoUrl || '/placeholder-logo.svg'} 
+          alt={`${company.name} logo`} 
+          className="h-16 w-16 rounded-lg bg-white p-1"
+          onError={handleLogoError}
+        />
         <div>
           <h3 className="text-xl font-bold text-white">{company.name}</h3>
           <p className="text-secondary">{company.location}</p>

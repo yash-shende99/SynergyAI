@@ -33,7 +33,14 @@ const CompanyAlertCard: FC<CompanyAlertCardProps> = ({ company, watchlistId, onC
         <X size={14} />
       </button>
       <div className="flex items-center gap-4">
-        <img src={company.logoUrl} alt={`${company.name} logo`} className="h-10 w-10 rounded-md bg-white p-1"/>
+        <img 
+          src={company.logoUrl || '/placeholder-logo.svg'} 
+          alt={`${company.name} logo`} 
+          className="h-10 w-10 rounded-md bg-white p-1"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = '/placeholder-logo.svg';
+          }}
+        />
         <div>
           <h4 className="font-bold text-white">{company.name}</h4>
           <p className="text-sm text-secondary">{company.sector}</p>

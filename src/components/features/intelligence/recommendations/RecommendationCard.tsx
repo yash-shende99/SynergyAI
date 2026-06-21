@@ -15,7 +15,14 @@ const RecommendationCard: FC<RecommendationCardProps> = ({ recommendation, onDis
   return (
     <div className="rounded-2xl border border-border bg-surface/50 p-6 flex flex-col h-full transition-all duration-300 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10">
       <div className="flex items-start gap-4">
-        <img src={company.logoUrl} alt={`${company.name} logo`} className="h-12 w-12 rounded-lg bg-white p-1"/>
+        <img 
+          src={company.logoUrl || '/placeholder-logo.svg'} 
+          alt={`${company.name} logo`} 
+          className="h-12 w-12 rounded-lg bg-white p-1"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = '/placeholder-logo.svg';
+          }}
+        />
         <div>
           <h3 className="text-lg font-bold text-white">{company.name}</h3>
           <p className="text-sm text-secondary -mt-1">{company.sector}</p>

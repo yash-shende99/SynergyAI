@@ -40,13 +40,19 @@ class RAGSystem:
     def __init__(self):
         print("--- Initializing RAG System: Loading models and index... ---")
         try:
-            self.model = SentenceTransformer(EMBEDDING_MODEL_NAME, device='cuda')
+            import torch
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+            print(f"--- Loading SentenceTransformer on {device}... ---")
+            self.model = SentenceTransformer(EMBEDDING_MODEL_NAME, device=device)
             self.index = faiss.read_index(FAISS_INDEX_PATH)
             with open(TEXT_MAP_PATH, 'rb') as f:
                 self.chunk_map = pickle.load(f)
-            print("✅ RAG System initialized successfully.")
+            print("[OK] RAG System initialized successfully.")
         except Exception as e:
-            print(f"❌ FATAL ERROR: Could not initialize RAG System: {e}")
+            try:
+                print(f"[ERROR] Could not initialize RAG System: {e}")
+            except Exception:
+                print("[ERROR] Could not initialize RAG System.")
             print("   Please ensure 'synergyai_index.faiss' and 'synergyai_text_map.pkl' exist.")
             self.model = None
             self.index = None

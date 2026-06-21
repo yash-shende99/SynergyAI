@@ -7,10 +7,10 @@ import SynergyWorkspace from '../SynergyWorkspace';
 
 // In a real app, this data would be fetched from the database
 const mockCompanies: Company[] = [
-  { id: 'comp-1', name: 'Reliance Industries', logoUrl: 'https://logo.clearbit.com/ril.com', sector: 'Conglomerate', location: 'Mumbai', revenue: 974864, employees: 389414 },
-  { id: 'comp-2', name: 'Delhivery', logoUrl: 'https://logo.clearbit.com/delhivery.com', sector: 'Logistics', location: 'Gurgaon', revenue: 6800, employees: 65000 },
-  { id: 'comp-3', name: 'Zomato', logoUrl: 'https://logo.clearbit.com/zomato.com', sector: 'Food Tech', location: 'Gurgaon', revenue: 7000, employees: 5000 },
-  { id: 'comp-4', name: 'Freshworks', logoUrl: 'https://logo.clearbit.com/freshworks.com', sector: 'SaaS', location: 'Chennai', revenue: 4000, employees: 5500 },
+  { id: 'comp-1', name: 'Reliance Industries', logoUrl: '/placeholder-logo.svg', sector: 'Conglomerate', location: 'Mumbai', revenue: 974864, employees: 389414 },
+  { id: 'comp-2', name: 'Delhivery', logoUrl: '/placeholder-logo.svg', sector: 'Logistics', location: 'Gurgaon', revenue: 6800, employees: 65000 },
+  { id: 'comp-3', name: 'Zomato', logoUrl: '/placeholder-logo.svg', sector: 'Food Tech', location: 'Gurgaon', revenue: 7000, employees: 5000 },
+  { id: 'comp-4', name: 'Freshworks', logoUrl: '/placeholder-logo.svg', sector: 'SaaS', location: 'Chennai', revenue: 4000, employees: 5500 },
 ];
 const existingProfile: SynergyProfile = { id: 'syn-1', name: 'Reliance + Delhivery Analysis', acquirer: mockCompanies[0], target: mockCompanies[1], summary: '', variables: { costReduction: 12, revenueGrowth: 8, integrationCosts: 50, timeToRealize: 3 } };
 

@@ -1,5 +1,6 @@
 import { FC } from 'react';
 import { Company } from '../../../types';
+import { handleLogoError } from '../../../lib/utils';
 
 interface CompanyResultCardProps {
   company: Company;
@@ -17,12 +18,10 @@ const CompanyResultCard: FC<CompanyResultCardProps> = ({ company, isSelected, on
     >
       <div className="flex items-center gap-4">
         <img 
-          src={company.logoUrl || '/placeholder-logo.png'} 
+          src={company.logoUrl || '/placeholder-logo.svg'} 
           alt={`${company.name} logo`} 
           className="h-10 w-10 rounded-md bg-white p-1 object-contain"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = '/placeholder-logo.png';
-          }}
+          onError={handleLogoError}
         />
         <div>
           <h4 className="font-bold text-white">{company.name}</h4>

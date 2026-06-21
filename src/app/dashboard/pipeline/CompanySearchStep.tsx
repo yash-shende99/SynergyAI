@@ -40,7 +40,13 @@ const CompanySearchStep: FC<{ onCompanySelect: (c: Company) => void }> = ({ onCo
         {isLoading && <Loader2 className="animate-spin mx-auto"/>}
         {results.map(company => (
             <button key={company.id} onClick={() => onCompanySelect(company)} className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-surface">
-                <img src={company.logoUrl} className="h-8 w-8 rounded-md bg-white p-1"/>
+                <img 
+                  src={company.logoUrl || '/placeholder-logo.svg'} 
+                  className="h-8 w-8 rounded-md bg-white p-1"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/placeholder-logo.svg';
+                  }}
+                />
                 <div><p className="font-medium text-white text-sm">{company.name}</p><p className="text-xs text-secondary">{company.sector}</p></div>
             </button>
         ))}

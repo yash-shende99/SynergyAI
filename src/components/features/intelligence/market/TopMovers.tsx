@@ -5,7 +5,14 @@ import { TrendingUp, TrendingDown } from 'lucide-react';
 const MoverItem: FC<{ mover: MarketMover }> = ({ mover }) => (
   <div className="flex items-center justify-between p-2 rounded hover:bg-surface/50">
     <div className="flex items-center gap-3">
-      <img src={mover.logoUrl} alt={mover.name} className="h-8 w-8 rounded-full bg-white p-1" />
+      <img 
+        src={mover.logoUrl || '/placeholder-logo.svg'} 
+        alt={mover.name} 
+        className="h-8 w-8 rounded-full bg-white p-1"
+        onError={(e) => {
+          (e.target as HTMLImageElement).src = '/placeholder-logo.svg';
+        }}
+      />
       <span className="text-sm font-medium text-white">{mover.name}</span>
     </div>
     <span className={`font-semibold text-sm ${mover.changePercent > 0 ? 'text-green-400' : 'text-red-400'}`}>

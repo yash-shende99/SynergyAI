@@ -2,6 +2,7 @@ import { FC, useState } from 'react';
 import { CompanyMapProfile } from '../../../../types';
 import HoverCard from './HoverCard';
 import React from 'react'; // Import React for style prop
+import { handleLogoError } from '../../../../lib/utils';
 
 interface CompanyLogoNodeProps {
   company: CompanyMapProfile;
@@ -30,7 +31,12 @@ const CompanyLogoNode: FC<CompanyLogoNodeProps> = ({ company, onClick, style }) 
         className="rounded-full bg-white p-1.5 shadow-lg transition-all duration-300 ease-in-out hover:scale-110 hover:ring-2 hover:ring-primary z-10"
         title={company.name} // Adds a native tooltip for accessibility
       >
-        <img src={company.logoUrl} alt={company.name} className="h-full w-full rounded-full object-contain" />
+        <img 
+          src={company.logoUrl || '/placeholder-logo.svg'} 
+          alt={company.name} 
+          className="h-full w-full rounded-full object-contain"
+          onError={handleLogoError}
+        />
       </button>
       
       {/* The hover card appears on hover */}
