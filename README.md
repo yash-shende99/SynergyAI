@@ -131,6 +131,3 @@ The application will be available at [http://localhost:3000](http://localhost:30
 
 ## 🤝 Contributing
 Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 📝 License
-This project is licensed under the MIT License.
