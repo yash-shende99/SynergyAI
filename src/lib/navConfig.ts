@@ -9,8 +9,8 @@ export const globalNavItems: NavItem[] = [
   { id: 'sourcing', name: 'Deal Sourcing', href: '/dashboard/sourcing', icon: Search },
   { id: 'chat', name: 'Global AI Co-Pilot', href: '/dashboard/chat', icon: MessageCircle },
   { id: 'notes', name: 'Journal', href: '/dashboard/notes', icon: BookOpen },
-  // { id: 'library', name: 'Knowledge Library', href: '/dashboard/knowledge-library', icon: BookOpen },
-  // { id: 'team-chat', name: 'Team Chat', href: '/dashboard/team-chat', icon: Users }
+  { id: 'library', name: 'Knowledge Library', href: '/dashboard/knowledge-library', icon: BookOpen },
+  { id: 'team-chat', name: 'Team Chat', href: '/dashboard/team-chat', icon: Users }
 ];
 
 // Update projectNavItems to have proper base paths
@@ -61,7 +61,7 @@ export const featureConfig: Record<string, FeatureConfig> = {
       { name: 'Ask', href: '/dashboard/chat' },
       { name: 'History', href: '/dashboard/chat/history' },
       { name: 'Suggested Questions', href: '/dashboard/chat/suggestions' },
-      // { name: 'Knowledge Retrieval', href: '/dashboard/chat/knowledge' },
+      { name: 'Knowledge Retrieval', href: '/dashboard/chat/knowledge' },
     ],
   },
   'library': {
@@ -132,7 +132,7 @@ export const featureConfig: Record<string, FeatureConfig> = {
       { name: 'Upload', href: '/vdr' },
       { name: 'Categories', href: '/vdr/categories' },
       { name: 'Search', href: '/vdr/search' },
-      // { name: 'Annotations', href: '/vdr/annotations' },
+      { name: 'Annotations', href: '/vdr/annotations' },
       { name: 'Q&A', href: '/vdr/qa' },
     ]
   },
@@ -155,11 +155,11 @@ export const featureConfig: Record<string, FeatureConfig> = {
   'valuation': {
     title: 'Valuation & Models',
     subFeatures: [
-      // { name: 'Templates', href: '/valuation' },
-      // { name: 'Live Models', href: '/valuation/models' },
+      { name: 'Templates', href: '/valuation' },
+      { name: 'Live Models', href: '/valuation/models' },
       { name: 'Scenarios', href: '/valuation/scenarios' },
       { name: 'Monte Carlo', href: '/valuation/mc' },
-      // { name: 'Synergies', href: '/valuation/synergies' },
+      { name: 'Synergies', href: '/valuation/synergies' },
     ],
   },
   'reports': {

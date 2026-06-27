@@ -47,3 +47,4 @@ backend/SynergyAI_Documents
 backend/llama.cpp
 backend/ollama_factory
 backend/uploads
+changes.txt
