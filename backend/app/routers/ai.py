@@ -1399,8 +1399,8 @@ async def get_live_combined_news(user_id: str = Depends(get_current_user_id)):
 @cached(request_type="ai_heavy")
 async def get_ai_recommendations(user_id: str = Depends(get_current_user_id)):
     try:
-        thirty_days_ago = (datetime.utcnow() - timedelta(days=30)).isoformat()
-        events_res = supabase.table('events').select('*, companies(*)').gte('event_date', thirty_days_ago).limit(5).execute()
+        # Get 5 most recent events, regardless of date, to ensure demo data always works
+        events_res = supabase.table('events').select('*, companies(*)').order('event_date', desc=True).limit(5).execute()
         if not events_res.data:
             return []
 
@@ -1408,14 +1408,31 @@ async def get_ai_recommendations(user_id: str = Depends(get_current_user_id)):
             company = event.get('companies')
             if not company: 
                 return None
+            
+            # Default fallback thesis
+            ai_thesis = {
+                "headline": f"Strategic Acquisition of {company.get('name', 'Target')}",
+                "rationale": "This target aligns with core expansion objectives and provides immediate market synergy."
+            }
+            
             try:
-                briefing = f"Profile: {json.dumps(company)}\nEvent: {event['summary']}"
+                briefing = f"Profile: {json.dumps(company)}\nEvent: {event.get('summary', 'Market shift')}"
                 prompt = f"Instruction: As a senior partner, write a JSON thesis for acquiring this target company: {briefing}. format: {{\"headline\": \"...\", \"rationale\": \"...\"}}"
-                response = await client.post(OLLAMA_SERVER_URL, json={"model": CUSTOM_MODEL_NAME, "prompt": prompt, "stream": False}, timeout=60.0)
-                ai_thesis = json.loads(re.search(r'\{.*\}', response.json().get('response', '{}'), re.DOTALL).group(0))
-                return {"company": company, "triggerEvent": {"type": event['event_type'], "summary": event['summary']}, "aiThesis": ai_thesis}
-            except:
-                return None
+                response = await client.post(OLLAMA_SERVER_URL, json={"model": CUSTOM_MODEL_NAME, "prompt": prompt, "stream": False}, timeout=30.0)
+                
+                if response.status_code == 200:
+                    text_response = response.json().get('response', '{}')
+                    match = re.search(r'\{.*\}', text_response, re.DOTALL)
+                    if match:
+                        ai_thesis = json.loads(match.group(0))
+            except Exception as e:
+                print(f"Fallback used for recommendation thesis generation: {e}")
+                
+            return {
+                "company": company, 
+                "triggerEvent": {"type": event.get('event_type', 'Market Event'), "summary": event.get('summary', 'Notable industry development')}, 
+                "aiThesis": ai_thesis
+            }
 
         async with httpx.AsyncClient() as client:
             tasks = [generate_thesis(client, event) for event in events_res.data]
