@@ -8,11 +8,26 @@ interface WatchlistStore {
   initializeWatchlists: () => Promise<void>;
   addToWatchlist: (company: Company, watchlistId: string) => Promise<void>;
   removeFromWatchlist: (companyId: string, watchlistId: string) => Promise<void>;
+  isCompanyInWatchlist: (companyId: string) => boolean;
+  isCompanyInSpecificWatchlist: (companyId: string, watchlistId: string) => boolean;
 }
 
 export const useWatchlistStore = create<WatchlistStore>((set, get) => ({
   watchlists: [],
   isLoading: true,
+
+  isCompanyInWatchlist: (companyId: string) => {
+    const { watchlists } = get();
+    return watchlists.some(w => 
+      w.watchlist_companies?.some((wc: any) => wc.company_cin === companyId)
+    );
+  },
+
+  isCompanyInSpecificWatchlist: (companyId: string, watchlistId: string) => {
+    const { watchlists } = get();
+    const wl = watchlists.find(w => w.id === watchlistId);
+    return wl?.watchlist_companies?.some((wc: any) => wc.company_cin === companyId) ?? false;
+  },
 
   // Fetch all user watchlists
   initializeWatchlists: async () => {
@@ -68,7 +83,7 @@ export const useWatchlistStore = create<WatchlistStore>((set, get) => ({
       alert(`"${company.name}" has been added to your watchlist!`);
       
       // Refresh the watchlists to get updated counts
-      get().initializeWatchlists();
+      await get().initializeWatchlists();
     } catch (error) {
       console.error("Failed to add to watchlist:", error);
       alert(error instanceof Error ? error.message : "Failed to add to watchlist");
