@@ -17,12 +17,6 @@ const CreateTaskModal: FC<CreateTaskModalProps> = ({ isOpen, onClose, onTaskCrea
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchProjects();
-    }
-  }, [isOpen]);
-
   const fetchProjects = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -39,6 +33,12 @@ const CreateTaskModal: FC<CreateTaskModalProps> = ({ isOpen, onClose, onTaskCrea
       console.error("Failed to fetch projects", e);
     }
   };
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchProjects();
+    }
+  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
