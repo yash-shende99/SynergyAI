@@ -16,6 +16,11 @@ class ProjectCreate(BaseModel):
     company_cin: str
     team_emails: List[str]
 
+class TaskCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    priority: Optional[str] = 'Medium'
+
 class TeamInvite(BaseModel):
     email: str
     role: str # 'Editor' or 'Viewer'
@@ -42,6 +47,55 @@ async def get_projects(user_id: str = Depends(get_current_user_id)):
     except Exception as e:
         print(f"Error fetching projects: {e}")
         raise HTTPException(status_code=500, detail="Could not fetch projects.")
+
+@router.get("/api/user/tasks", response_model=List[Dict])
+async def get_user_tasks(user_id: str = Depends(get_current_user_id)):
+    """Fetches all tasks across all active projects for the current user."""
+    try:
+        # 1. Fetch user's projects to get project IDs
+        projects_res = supabase.rpc('get_user_projects', {'p_user_id': user_id}).execute()
+        user_projects = projects_res.data if projects_res.data else []
+        
+        if not user_projects:
+            return []
+            
+        project_ids = [p['id'] for p in user_projects]
+        project_map = {p['id']: p['name'] for p in user_projects}
+        
+        # 2. Fetch tasks for those projects
+        tasks_res = supabase.table('project_tasks').select('*').in_('project_id', project_ids).execute()
+        tasks = tasks_res.data if tasks_res.data else []
+        
+        # 3. Enrich tasks with project names
+        enriched_tasks = []
+        for task in tasks:
+            task_copy = dict(task)
+            task_copy['project_name'] = project_map.get(task['project_id'], 'Unknown Project')
+            enriched_tasks.append(task_copy)
+            
+        return enriched_tasks
+        
+    except Exception as e:
+        print(f"Error fetching user tasks: {e}")
+        raise HTTPException(status_code=500, detail="Could not fetch tasks.")
+
+@router.post("/api/projects/{project_id}/tasks")
+async def create_project_task(project_id: str, task_data: TaskCreate, user_id: str = Depends(get_project_member_auth)):
+    """Creates a new manual task for a specific project."""
+    try:
+        new_task = {
+            'project_id': project_id,
+            'title': task_data.title,
+            'description': task_data.description,
+            'priority': task_data.priority,
+            'status': 'To Do',
+            'created_by_user_id': user_id
+        }
+        res = supabase.table('project_tasks').insert(new_task).execute()
+        return res.data[0] if res.data else {"message": "Task created"}
+    except Exception as e:
+        print(f"Error creating task: {e}")
+        raise HTTPException(status_code=500, detail="Could not create task.")
 
 @router.post("/api/projects")
 async def create_project(project_data: ProjectCreate, user_id: str = Depends(get_current_user_id)):
