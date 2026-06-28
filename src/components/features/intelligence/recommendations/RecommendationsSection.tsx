@@ -22,7 +22,12 @@ const RecommendationsSection: FC<{ recommendations: AiRecommendation[] }> = ({ r
             <p className="text-sm text-secondary">Proactive deal sourcing based on market triggers and your strategic profile.</p>
           </div>
         </div>
-        <button className="flex items-center gap-2 text-sm text-secondary hover:text-white p-2 rounded-md bg-surface hover:bg-border"><Filter size={16}/>Filter</button>
+        <button 
+          onClick={() => alert("Advanced filtering options are coming soon!")}
+          className="flex items-center gap-2 text-sm text-secondary hover:text-white p-2 rounded-md bg-surface hover:bg-border"
+        >
+          <Filter size={16}/>Filter
+        </button>
       </div>
       
       {recommendations.length > 0 ? (

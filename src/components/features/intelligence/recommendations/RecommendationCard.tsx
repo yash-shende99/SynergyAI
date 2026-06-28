@@ -1,8 +1,10 @@
 import { FC } from 'react';
 import { AiRecommendation } from '../../../../types';
 import {Button} from '../../../ui/button';
-import { Star, X, Zap } from 'lucide-react';
+import { Star, X, Zap, Loader2, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
+import { useWatchlistStore } from '../../../../store/watchlistStore';
+import { useState } from 'react';
 
 interface RecommendationCardProps {
   recommendation: AiRecommendation;
@@ -11,6 +13,23 @@ interface RecommendationCardProps {
 
 const RecommendationCard: FC<RecommendationCardProps> = ({ recommendation, onDismiss }) => {
   const { company, triggerEvent, aiThesis } = recommendation;
+  const { watchlists, addToWatchlist, initializeWatchlists, isCompanyInWatchlist, isCompanyInSpecificWatchlist } = useWatchlistStore();
+  const [isAdding, setIsAdding] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const isAdded = isCompanyInWatchlist(company.id);
+
+  // Initialize watchlists if they aren't loaded yet
+  if (watchlists.length === 0) {
+    initializeWatchlists();
+  }
+
+  const handleAddToSpecificWatchlist = async (watchlistId: string) => {
+    setIsAdding(true);
+    await addToWatchlist(company, watchlistId);
+    setIsAdding(false);
+    setShowDropdown(false);
+  };
 
   return (
     <div className="rounded-2xl border border-border bg-surface/50 p-6 flex flex-col h-full transition-all duration-300 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/10">
@@ -44,7 +63,51 @@ const RecommendationCard: FC<RecommendationCardProps> = ({ recommendation, onDis
       </div>
 
       <div className="mt-4 pt-4 border-t border-border/50 flex items-center gap-2">
-        <Button variant="secondary" size="sm" className="flex-1"><Star size={16} className="mr-2"/>Add to Watchlist</Button>
+        <div className="relative flex-1">
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            className={`w-full flex items-center justify-between ${isAdded ? 'bg-primary/20 text-primary hover:bg-primary/30 border border-primary/30' : ''}`}
+            onClick={() => setShowDropdown(!showDropdown)}
+            disabled={isAdding || watchlists.length === 0}
+          >
+            <div className="flex items-center">
+              {isAdding ? (
+                <Loader2 size={16} className="mr-2 animate-spin"/>
+              ) : (
+                <Star size={16} className={`mr-2 ${isAdded ? 'fill-primary' : ''}`}/>
+              )}
+              {isAdding ? 'Adding...' : isAdded ? 'In Watchlist' : 'Add to Watchlist'}
+            </div>
+            <ChevronDown size={14} className={`ml-2 text-secondary opacity-50 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+          </Button>
+
+          {showDropdown && watchlists.length > 0 && (
+            <div className="absolute bottom-full left-0 w-full mb-2 bg-background border border-border rounded-lg shadow-lg overflow-hidden z-10">
+              <div className="p-2 border-b border-border/50 bg-surface/50 text-xs text-secondary font-semibold">
+                Select Watchlist
+              </div>
+              <div className="max-h-48 overflow-y-auto">
+                {watchlists.map(wl => {
+                  const inThis = isCompanyInSpecificWatchlist(company.id, wl.id);
+                  return (
+                    <button
+                      key={wl.id}
+                      onClick={() => !inThis && handleAddToSpecificWatchlist(wl.id)}
+                      disabled={inThis}
+                      className={`w-full text-left px-4 py-2 text-sm transition-colors flex items-center justify-between ${
+                        inThis ? 'text-primary/70 bg-primary/10 cursor-not-allowed' : 'text-secondary hover:text-white hover:bg-surface'
+                      }`}
+                    >
+                      <span>{wl.name}</span>
+                      {inThis && <Star size={12} className="fill-primary text-primary" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
         <Button onClick={onDismiss} variant="ghost" size="sm" className="text-secondary hover:bg-surface"><X size={16}/></Button>
       </div>
     </div>
