@@ -1690,7 +1690,8 @@ async def get_watchlists_with_counts(user_id: str = Depends(get_current_user_id)
 @router.get("/api/watchlists", response_model=List[Dict])
 async def get_watchlists(user_id: str = Depends(get_current_user_id)):
     try:
-        result = supabase.table('watchlists').select('id, name').eq('user_id', user_id).order('created_at').execute()
+        # Include watchlist_companies to check inclusion without extra API calls
+        result = supabase.table('watchlists').select('id, name, watchlist_companies(company_cin)').eq('user_id', user_id).order('created_at').execute()
         return result.data
     except Exception:
         raise HTTPException(status_code=500, detail="Could not fetch watchlists.")
@@ -1723,10 +1724,11 @@ async def add_company_to_watchlist(watchlist_id: str, request: dict, user_id: st
         owner_check = supabase.table('watchlists').select('id').eq('id', watchlist_id).eq('user_id', user_id).execute()
         if not owner_check.data: 
             raise HTTPException(status_code=403, detail="Forbidden")
-        supabase.table('watchlist_companies').upsert({'watchlist_id': watchlist_id, 'company_cin': company_cin, 'user_id': user_id}).execute()
+        supabase.table('watchlist_companies').insert({'watchlist_id': watchlist_id, 'company_cin': company_cin, 'user_id': user_id}).execute()
         return {"message": "Company added successfully."}
-    except Exception:
-        raise HTTPException(status_code=500, detail="Could not add company.")
+    except Exception as e:
+        print(f"Watchlist insert error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/api/watchlists/{watchlist_id}/companies/{company_cin}")
 async def remove_company_from_watchlist(watchlist_id: str, company_cin: str, user_id: str = Depends(get_current_user_id)):
