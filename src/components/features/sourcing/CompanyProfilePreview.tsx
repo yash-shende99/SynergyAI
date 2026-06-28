@@ -6,6 +6,7 @@ import { Button } from '../../ui/button';
 import { Star, Loader2, ChevronDown } from 'lucide-react';
 import { supabase } from '../../../lib/supabaseClient';
 import { handleLogoError } from '../../../lib/utils';
+import { useWatchlistStore } from '../../../store/watchlistStore';
 
 interface CompanyProfilePreviewProps {
   company: Company | null;
@@ -15,6 +16,9 @@ interface CompanyProfilePreviewProps {
 const CompanyProfilePreview: FC<CompanyProfilePreviewProps> = ({ company, watchlists = [] }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [showWatchlistDropdown, setShowWatchlistDropdown] = useState(false);
+  const { watchlists: storeWatchlists, isCompanyInWatchlist, isCompanyInSpecificWatchlist, addToWatchlist } = useWatchlistStore();
+
+  const isAdded = company ? isCompanyInWatchlist(company.id) : false;
 
   if (!company) {
     return (
@@ -25,27 +29,11 @@ const CompanyProfilePreview: FC<CompanyProfilePreviewProps> = ({ company, watchl
   }
 
   const addToSpecificWatchlist = async (watchlistId: string, watchlistName: string) => {
+    if (!company) return;
     setIsAdding(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { alert('Please log in'); return; }
-
-      const response = await fetch(`http://localhost:8000/api/watchlists/${watchlistId}/companies`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({ company_cin: company.id })
-      });
-
-      if (response.ok) {
-        alert(`"${company.name}" has been added to "${watchlistName}"!`);
-        setShowWatchlistDropdown(false);
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        alert(`Failed to add company: ${errorData.detail || 'Unknown error'}`);
-      }
+      await addToWatchlist(company, watchlistId);
+      setShowWatchlistDropdown(false);
     } catch (error) {
       console.error('Error adding to watchlist:', error);
     } finally {
@@ -90,34 +78,43 @@ const CompanyProfilePreview: FC<CompanyProfilePreviewProps> = ({ company, watchl
             onClick={() => setShowWatchlistDropdown(!showWatchlistDropdown)}
             variant="secondary" 
             size="sm" 
-            className="w-full flex items-center justify-between"
-            disabled={isAdding || watchlists.length === 0}
+            className={`w-full flex items-center justify-between ${isAdded ? 'bg-primary/20 text-primary hover:bg-primary/30 border border-primary/30' : ''}`}
+            disabled={isAdding || storeWatchlists.length === 0}
           >
             <div className="flex items-center">
               {isAdding ? (
                 <Loader2 size={16} className="mr-2 animate-spin" />
               ) : (
-                <Star size={16} className="mr-2" />
+                <Star size={16} className={`mr-2 ${isAdded ? 'fill-primary' : ''}`} />
               )}
-              Add to Watchlist
+              {isAdding ? 'Adding...' : isAdded ? 'In Watchlist' : 'Add to Watchlist'}
             </div>
-            <ChevronDown size={16} className={`transition-transform ${showWatchlistDropdown ? 'rotate-180' : ''}`} />
+            <ChevronDown size={14} className={`ml-2 text-secondary opacity-50 transition-transform ${showWatchlistDropdown ? 'rotate-180' : ''}`} />
           </Button>
 
           {/* Watchlist Dropdown Menu */}
-          {showWatchlistDropdown && watchlists.length > 0 && (
-            <div className="absolute bottom-full left-0 right-0 mb-2 bg-surface border border-border rounded-lg shadow-lg z-10 overflow-hidden">
+          {showWatchlistDropdown && storeWatchlists.length > 0 && (
+            <div className="absolute bottom-full left-0 w-full mb-2 bg-background border border-border rounded-lg shadow-lg overflow-hidden z-10">
+              <div className="p-2 border-b border-border/50 bg-surface/50 text-xs text-secondary font-semibold">
+                Select Watchlist
+              </div>
               <div className="max-h-48 overflow-y-auto">
-                {watchlists.map((watchlist) => (
-                  <button
-                    key={watchlist.id}
-                    onClick={() => addToSpecificWatchlist(watchlist.id, watchlist.name)}
-                    disabled={isAdding}
-                    className="w-full text-left px-4 py-2 text-sm hover:bg-border transition-colors text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {watchlist.name}
-                  </button>
-                ))}
+                {storeWatchlists.map(wl => {
+                  const inThis = company ? isCompanyInSpecificWatchlist(company.id, wl.id) : false;
+                  return (
+                    <button
+                      key={wl.id}
+                      onClick={() => !inThis && addToSpecificWatchlist(wl.id, wl.name)}
+                      disabled={inThis}
+                      className={`w-full text-left px-4 py-2 text-sm transition-colors flex items-center justify-between ${
+                        inThis ? 'text-primary/70 bg-primary/10 cursor-not-allowed' : 'text-secondary hover:text-white hover:bg-surface'
+                      }`}
+                    >
+                      <span>{wl.name}</span>
+                      {inThis && <Star size={12} className="fill-primary text-primary" />}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
