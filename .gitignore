@@ -48,3 +48,5 @@ backend/llama.cpp
 backend/ollama_factory
 backend/uploads
 changes.txt
+__pycache__/
+*.pyc
