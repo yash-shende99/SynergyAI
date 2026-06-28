@@ -12,7 +12,7 @@ const CreateTaskModal: FC<CreateTaskModalProps> = ({ isOpen, onClose, onTaskCrea
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('Medium');
-  const [projectId, setProjectId] = useState('');
+  const [projectId, setProjectId] = useState('personal');
   const [projects, setProjects] = useState<{id: string, name: string}[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -34,7 +34,6 @@ const CreateTaskModal: FC<CreateTaskModalProps> = ({ isOpen, onClose, onTaskCrea
       if (response.ok) {
         const data = await response.json();
         setProjects(data);
-        if (data.length > 0) setProjectId(data[0].id);
       }
     } catch (e) {
       console.error("Failed to fetch projects", e);
@@ -52,13 +51,13 @@ const CreateTaskModal: FC<CreateTaskModalProps> = ({ isOpen, onClose, onTaskCrea
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not logged in");
 
-      const response = await fetch(`http://localhost:8000/api/projects/${projectId}/tasks`, {
+      const response = await fetch(`http://localhost:8000/api/user/tasks`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
-        body: JSON.stringify({ title, description, priority })
+        body: JSON.stringify({ title, description, priority, project_id: projectId })
       });
 
       if (!response.ok) throw new Error("Failed to create task");
@@ -97,7 +96,7 @@ const CreateTaskModal: FC<CreateTaskModalProps> = ({ isOpen, onClose, onTaskCrea
               className="w-full bg-surface border border-border rounded-lg p-2.5 text-white focus:border-primary outline-none"
               required
             >
-              <option value="" disabled>Select a project...</option>
+              <option value="personal">Personal Task</option>
               {projects.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}

@@ -20,6 +20,7 @@ class TaskCreate(BaseModel):
     title: str
     description: Optional[str] = None
     priority: Optional[str] = 'Medium'
+    project_id: str
 
 class TeamInvite(BaseModel):
     email: str
@@ -79,12 +80,37 @@ async def get_user_tasks(user_id: str = Depends(get_current_user_id)):
         print(f"Error fetching user tasks: {e}")
         raise HTTPException(status_code=500, detail="Could not fetch tasks.")
 
-@router.post("/api/projects/{project_id}/tasks")
-async def create_project_task(project_id: str, task_data: TaskCreate, user_id: str = Depends(get_project_member_auth)):
-    """Creates a new manual task for a specific project."""
+@router.post("/api/user/tasks")
+async def create_user_task(task_data: TaskCreate, user_id: str = Depends(get_current_user_id)):
+    """Creates a new manual task. Supports 'personal' tasks by auto-creating a Personal project."""
     try:
+        actual_project_id = task_data.project_id
+        
+        # Auto-create "Personal Tasks" project if needed
+        if actual_project_id == "personal":
+            # Check if it already exists
+            existing = supabase.table('projects').select('id').eq('name', 'Personal Tasks').eq('created_by_user_id', user_id).execute()
+            if existing.data:
+                actual_project_id = existing.data[0]['id']
+            else:
+                # Create it
+                res = supabase.rpc('create_project_and_add_members', {
+                    'p_name': 'Personal Tasks',
+                    'p_company_cin': 'PERSONAL',
+                    'p_creator_id': user_id,
+                    'p_team_emails': []
+                }).execute()
+                actual_project_id = res.data
+                
+        # Validate membership if not personal
+        if task_data.project_id != "personal":
+            # Check if user is member
+            member = supabase.table('project_members').select('role').eq('project_id', actual_project_id).eq('user_id', user_id).execute()
+            if not member.data:
+                raise HTTPException(status_code=403, detail="Not a member of this project")
+                
         new_task = {
-            'project_id': project_id,
+            'project_id': actual_project_id,
             'title': task_data.title,
             'description': task_data.description,
             'priority': task_data.priority,
@@ -93,6 +119,8 @@ async def create_project_task(project_id: str, task_data: TaskCreate, user_id: s
         }
         res = supabase.table('project_tasks').insert(new_task).execute()
         return res.data[0] if res.data else {"message": "Task created"}
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error creating task: {e}")
         raise HTTPException(status_code=500, detail="Could not create task.")
