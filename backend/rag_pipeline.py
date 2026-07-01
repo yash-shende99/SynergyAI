@@ -26,6 +26,8 @@ from sentence_transformers import SentenceTransformer
 import numpy as np
 from typing import Optional, List, Dict
 import os
+import threading
+import fitz
 
 # --- CONFIGURATION ---
 FAISS_INDEX_PATH = "synergyai_index.faiss"
@@ -38,6 +40,7 @@ class RAGSystem:
     the embedding model, and performing semantic search. It's our "Librarian."
     """
     def __init__(self):
+        self.lock = threading.Lock()
         print("--- Initializing RAG System: Loading models and index... ---")
         try:
             import torch
@@ -69,7 +72,10 @@ class RAGSystem:
             query_embedding = self.model.encode([query_text])
             query_embedding = np.array(query_embedding).astype('float32')
 
-            search_k = k * 5 if allowed_sources else k
+            # When filtering by allowed sources (e.g. per-user projects), we need to 
+            # retrieve a very large number of candidate chunks before post-filtering,
+            # otherwise the user's chunks will be crowded out by global chunks.
+            search_k = 2000 if allowed_sources else k
             distances, indices = self.index.search(query_embedding, search_k)
 
             filtered_results = []
@@ -84,6 +90,79 @@ class RAGSystem:
         except Exception as e:
             print(f"Error during RAG search: {e}")
             return []
+
+    def ingest_document(self, file_path: str, source_name: str):
+        """
+        Extracts text from a document, chunks it, and adds it to the FAISS index and chunk map.
+        Supports .pdf and .txt files.
+        """
+        if not self.index or not self.model:
+            print("[ERROR] RAG System not fully initialized. Cannot ingest.")
+            return
+
+        print(f"--- Ingesting document: {source_name} ---")
+        try:
+            text = ""
+            ext = os.path.splitext(file_path)[1].lower()
+            if ext == '.pdf':
+                doc = fitz.open(file_path)
+                for page in doc:
+                    text += page.get_text() + "\n"
+                doc.close()
+            elif ext == '.docx':
+                import docx
+                doc = docx.Document(file_path)
+                text = "\n".join([para.text for para in doc.paragraphs])
+            else:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    text = f.read()
+
+            if not text.strip():
+                print(f"[WARN] No text extracted from {source_name}")
+                return
+
+            # Simple chunking by words
+            words = text.split()
+            chunk_size = 400
+            overlap = 50
+            chunks = []
+            
+            i = 0
+            while i < len(words):
+                chunk_words = words[i:i + chunk_size]
+                chunk_text = " ".join(chunk_words)
+                if chunk_text.strip():
+                    chunks.append(chunk_text)
+                i += chunk_size - overlap
+
+            if not chunks:
+                return
+
+            print(f"Extracted {len(chunks)} chunks from {source_name}. Generating embeddings...")
+            
+            with self.lock:
+                embeddings = self.model.encode(chunks)
+                embeddings = np.array(embeddings).astype('float32')
+                
+                # Add to index
+                self.index.add(embeddings)
+                
+                # Add to chunk map
+                for chunk_text in chunks:
+                    self.chunk_map.append({
+                        'source': source_name,
+                        'content': chunk_text
+                    })
+                
+                print("Updating FAISS index on disk...")
+                faiss.write_index(self.index, FAISS_INDEX_PATH)
+                with open(TEXT_MAP_PATH, 'wb') as f:
+                    pickle.dump(self.chunk_map, f)
+            
+            print(f"[OK] Successfully ingested {source_name}")
+            
+        except Exception as e:
+            print(f"[ERROR] Failed to ingest document {source_name}: {e}")
 
 # Create a single, global instance of our RAG system
 rag_system = RAGSystem()
