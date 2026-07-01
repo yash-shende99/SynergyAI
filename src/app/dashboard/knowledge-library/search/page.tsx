@@ -1,0 +1,67 @@
+'use client';
+
+import { useState, useCallback } from 'react';
+import { useParams } from 'next/navigation';
+import { VdrSearchResult } from '../../../../types';
+import { supabase } from '../../../../lib/supabaseClient';
+import SearchInputPanel from '../../../../components/features/knowledge/search/SearchInputPanel';
+import SearchResultsPanel from '../../../../components/features/knowledge/search/SearchResultsPanel';
+import DocumentPreviewPanel from '../../../../components/features/knowledge/search/DocumentPreviewPanel';
+
+export default function VDRSearchPage() {
+  const [results, setResults] = useState<VdrSearchResult[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [selectedResult, setSelectedResult] = useState<VdrSearchResult | null>(null);
+  
+  const projectId = 'knowledge';
+
+  const handleSearch = useCallback(async (query: string, mode: 'semantic' | 'fulltext') => {
+    if (!query.trim()) return;
+    setIsLoading(true);
+    setError('');
+    setResults([]);
+    setSelectedResult(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("User not authenticated");
+
+      const response = await fetch(`http://localhost:8000/api/knowledge/search`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}` 
+        },
+        body: JSON.stringify({ query, mode })
+      });
+      if (!response.ok) throw new Error("Search failed on the server.");
+      const data = await response.json();
+      setResults(data);
+      if (data.length > 0) {
+        setSelectedResult(data[0]);
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [projectId]);
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[80vh]">
+      <div className="flex flex-col gap-6">
+        <SearchInputPanel onSearch={handleSearch} isLoading={isLoading} />
+        <SearchResultsPanel 
+          results={results} 
+          isLoading={isLoading}
+          error={error}
+          onResultSelect={setSelectedResult} 
+        />
+      </div>
+      <div>
+        <DocumentPreviewPanel selectedResult={selectedResult} />
+      </div>
+    </div>
+  );
+}
