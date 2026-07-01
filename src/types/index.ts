@@ -495,6 +495,7 @@ export interface VdrConversation {
 }
 
 export interface VdrSearchResult {
+  id: string;
   docId: string;
   docName: string;
   excerpt: string; // This will contain the highlighted text snippet
