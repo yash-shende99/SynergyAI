@@ -67,9 +67,11 @@ export const featureConfig: Record<string, FeatureConfig> = {
   'library': {
     title: 'Knowledge Library',
     subFeatures: [
-      { name: 'Browse Docs', href: '/dashboard/knowledge-library' },
-      { name: 'Tags & Topics', href: '/dashboard/knowledge-library/tags' },
-      { name: 'Upload', href: '/dashboard/knowledge-library/upload' },
+      { name: 'Upload', href: '/dashboard/knowledge-library' },
+      { name: 'Categories', href: '/dashboard/knowledge-library/categories' },
+      { name: 'Search', href: '/dashboard/knowledge-library/search' },
+      { name: 'Annotations', href: '/dashboard/knowledge-library/annotations' },
+      { name: 'Q&A', href: '/dashboard/knowledge-library/qa' },
     ],
   },
   'team-chat': {
@@ -335,9 +337,11 @@ export const globalSubFeatures = {
   library: {
     title: 'Knowledge Library',
     subFeatures: [
-      { name: 'Browse Docs', href: '/dashboard/knowledge-library' },
-      { name: 'Tags & Topics', href: '/dashboard/knowledge-library/tags' },
-      { name: 'Upload', href: '/dashboard/knowledge-library/upload' },
+      { name: 'Upload', href: '/dashboard/knowledge-library' },
+      { name: 'Categories', href: '/dashboard/knowledge-library/categories' },
+      { name: 'Search', href: '/dashboard/knowledge-library/search' },
+      { name: 'Annotations', href: '/dashboard/knowledge-library/annotations' },
+      { name: 'Q&A', href: '/dashboard/knowledge-library/qa' },
     ],
   },
   teamChat: {
