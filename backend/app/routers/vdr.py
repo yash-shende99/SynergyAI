@@ -6,7 +6,7 @@ import httpx
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, BackgroundTasks
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from app.core.config import supabase, OLLAMA_SERVER_URL, CUSTOM_MODEL_NAME
@@ -99,6 +99,7 @@ async def get_vdr_documents(project_id: str, user_id: str = Depends(get_current_
 
 @router.post("/api/vdr/documents/upload")
 async def upload_document(
+    background_tasks: BackgroundTasks,
     project_id: str = Form(...),
     file: UploadFile = File(...),
     category: str = Form("General"),
@@ -133,6 +134,10 @@ async def upload_document(
         }
         
         result = supabase.table('vdr_documents').insert(insert_data).execute()
+        
+        # Trigger ingestion asynchronously
+        background_tasks.add_task(rag_system.ingest_document, str(file_path), original_filename)
+        
         return result.data[0]
         
     except Exception as e:

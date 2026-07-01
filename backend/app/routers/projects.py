@@ -77,7 +77,6 @@ async def get_user_tasks(user_id: str = Depends(get_current_user_id)):
         return enriched_tasks
         
     except Exception as e:
-        print(f"Error fetching user tasks: {e}")
         raise HTTPException(status_code=500, detail="Could not fetch tasks.")
 
 @router.post("/api/user/tasks")
