@@ -3,13 +3,14 @@ from app.core.config import supabase
 
 async def get_current_user_id(request: Request) -> str:
     """Dependency to retrieve the current user's authenticated ID from Supabase JWT."""
-    auth_header = request.headers.get("Authorization")
-    if not auth_header:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+    token = request.query_params.get("token")
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if not auth_header:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        token = auth_header.split(" ")[-1]
+    
     try:
-        # Expected format: "Bearer <token>"
-        parts = auth_header.split(" ")
-        token = parts[-1]
         user_res = supabase.auth.get_user(token)
         if user_res.user:
             return user_res.user.id

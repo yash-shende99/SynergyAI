@@ -16,6 +16,16 @@ from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
 
+app_requests_log = open("requests.log", "a", buffering=1)
+
+from starlette.middleware.base import BaseHTTPMiddleware
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        app_requests_log.write(f"REQUEST: {request.method} {request.url}\n")
+        response = await call_next(request)
+        app_requests_log.write(f"RESPONSE: {response.status_code}\n")
+        return response
+
 from app.core.config import supabase
 from app.core.redis_cache import redis_cache
 from app.core.cache_decorator import cached, smart_cache
@@ -34,6 +44,7 @@ from app.routers.ai import (
 
 app = FastAPI(title="SynergyAI API")
 
+app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:8000"],
@@ -49,12 +60,13 @@ def read_root():
     return {"status": "SynergyAI API is running."}
 
 # Include routers
-from app.routers import auth, projects, vdr, ai
+from app.routers import auth, projects, vdr, ai, knowledge
 
 app.include_router(auth.router)
 app.include_router(projects.router)
 app.include_router(vdr.router)
 app.include_router(ai.router)
+app.include_router(knowledge.router)
 # Old cache router removed, new cache endpoints added directly below
 
 # --- CACHE WARMING SERVICES & SCHEDULERS ---
