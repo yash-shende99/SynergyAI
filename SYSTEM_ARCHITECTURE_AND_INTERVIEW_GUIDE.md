@@ -363,13 +363,13 @@ graph TB
 * **Mathematical Execution:**
   * Pulls variables: `revenueGrowth`, `ebitdaMargin`, `costOfCapital`, `iterations` (default: 10,000).
   * Generates normal distributions using NumPy:
-    $$\text{rev\_growth} \sim \mathcal{N}(\mu_{\text{rev}}, 2.0)$$
-    $$\text{ebitda\_margin} \sim \mathcal{N}(\mu_{\text{ebitda}}, 5.0)$$
-    $$\text{cost\_of\_capital} \sim \mathcal{N}(\mu_{\text{wacc}}, 1.0)$$
+    $$\text{revGrowth} \sim \mathcal{N}(\mu_{\text{rev}}, 2.0)$$
+    $$\text{ebitdaMargin} \sim \mathcal{N}(\mu_{\text{ebitda}}, 5.0)$$
+    $$\text{costOfCapital} \sim \mathcal{N}(\mu_{\text{wacc}}, 1.0)$$
   * Computes terminal cash flow:
-    $$\text{CF}_{\text{term}} = 100 \times \left(1 + \frac{\text{rev\_growth}}{100}\right) \times \left(\frac{\text{ebitda\_margin}}{100}\right)$$
+    $$\text{CF}_{\text{term}} = 100 \times \left(1 + \frac{\text{revGrowth}}{100}\right) \times \left(\frac{\text{ebitdaMargin}}{100}\right)$$
   * Computes discount rate:
-    $$r = \frac{\text{cost\_of\_capital}}{100} - \left(\frac{\text{rev\_growth}}{100} \times 0.5\right) \quad (\text{clamped to } \ge 0.01)$$
+    $$r = \frac{\text{costOfCapital}}{100} - \left(\frac{\text{revGrowth}}{100} \times 0.5\right) \quad (\text{clamped to } \ge 0.01)$$
   * Computes terminal values vector: $\text{TV} = \frac{\text{CF}_{\text{term}}}{r}$.
   * Computes Mean, Median, Standard Deviation, P5 (5th percentile), and P95 (95th percentile).
   * Passes statistical distribution to Ollama to generate qualitative investment committee commentary.
@@ -789,8 +789,8 @@ classDiagram
 * Inspects `events` table for target company over the past 90 days.
 * Filters for `severity in ['Critical', 'High']`.
 * Algorithm:
-  $$\text{event\_risk} = \min(\text{critical\_events} \times 15, 60)$$
-  $$\text{total\_risk\_score} = \min(\text{event\_risk} + 20, 100)$$
+  $$\text{EventRisk} = \min(\text{CriticalEvents} \times 15, 60)$$
+  $$\text{TotalRiskScore} = \min(\text{EventRisk} + 20, 100)$$
   * Score $> 70 \implies \text{High Risk}$
   * Score $> 40 \implies \text{Medium Risk}$
   * Otherwise $\implies \text{Low Risk}$
