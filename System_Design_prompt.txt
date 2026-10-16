@@ -1,0 +1,273 @@
+# Task: Reverse-Engineer My Project and Produce a Complete System Architecture & Design Document
+
+Act as a senior software architect, staff-level engineer, and SDE interview mentor.
+
+You have access to my existing project repository in this workspace. Your job is to reverse-engineer the actual implementation and create a complete, technically accurate System Architecture & Design Document that I can use for:
+
+1. Understanding the entire project deeply.
+2. Explaining its architecture confidently in SDE interviews.
+3. Drawing its HLD and LLD diagrams.
+4. Understanding end-to-end request and data flows.
+5. Defending technical decisions with evidence from the code.
+6. Identifying weaknesses, bugs, bottlenecks, and improvement opportunities.
+
+## Critical rules
+
+- Inspect the actual repository before documenting anything.
+- Do not assume the architecture based on the tech stack, README, or project name.
+- Explore the directory structure, entry points, routes, API handlers, service layers, models, database access, configuration, authentication, integrations, and deployment files.
+- Trace important workflows across the actual source files.
+- Distinguish implemented features from partially implemented features, mock functionality, placeholders, and planned features.
+- Never invent endpoints, tables, services, algorithms, metrics, security controls, or deployment infrastructure.
+- If something cannot be verified, explicitly label it "Unknown / not verified" and explain how to verify it.
+- Cite relevant repository file paths and, when useful, function names and line numbers.
+- Do not expose secrets, API keys, passwords, tokens, or private environment values. Describe configuration requirements without printing secret values.
+- Do not modify application code, delete files, install dependencies, or run destructive commands.
+- Do not create documentation until you have completed a sufficiently thorough repository inspection.
+- Do not stop after reading the README. Follow the actual code paths.
+- Do not overwhelm me with unrelated recommendations or external resources.
+
+## Required deliverable
+
+Create a main document named `SYSTEM_ARCHITECTURE_AND_INTERVIEW_GUIDE.md` in a suitable documentation directory in the repository.
+
+Organise it using the following sections.
+
+### 1. Executive summary
+- What the project does.
+- Problem it solves and target users.
+- Main capabilities.
+- Current implementation status.
+- Key architectural characteristics.
+
+### 2. Requirements
+- Functional requirements mapped to implemented features.
+- Non-functional requirements: security, performance, reliability, maintainability and scalability.
+- Clearly distinguish verified requirements from inferred expectations.
+
+### 3. Repository and codebase map
+- Major directories and their responsibilities.
+- Application entry points.
+- Frontend pages, components, hooks and state management where applicable.
+- Backend routes, services, models and utilities where applicable.
+- Configuration and deployment files.
+- Explain how the code is organised.
+
+### 4. System context diagram
+Create a Mermaid diagram showing:
+- Users and external actors.
+- The application boundary.
+- External services and dependencies.
+- Major inbound and outbound interactions.
+
+### 5. High-Level Design (HLD)
+Create a detailed Mermaid architecture/component diagram showing actual implemented components and their connections.
+
+Explain:
+- Every component's responsibility.
+- What data it receives and produces.
+- Protocols and communication mechanisms, where verified.
+- Synchronous versus asynchronous interactions.
+- Trust boundaries and authentication boundaries.
+- Why the major layers are separated.
+
+Use distinct, clearly labelled components. Do not create a diagram that merely lists technologies.
+
+### 6. Technology stack and design rationale
+For each major technology:
+- Where it is actually used.
+- Why it appears suitable for that responsibility.
+- Verified advantages.
+- Limitations and alternatives.
+- Distinguish the original design rationale from any rationale inferred during this review.
+
+### 7. Component-by-component architecture
+For each major component, document:
+- Responsibility and boundaries.
+- Important source files and entry points.
+- Public interfaces.
+- Dependencies.
+- Inputs, outputs and side effects.
+- Error handling.
+- Security considerations.
+- Dependencies on other components.
+
+### 8. End-to-end workflows and sequence diagrams
+Identify the most important user workflows from the real code.
+
+For each workflow:
+1. Explain the user action.
+2. Trace the request through frontend, backend, services, storage and external integrations as applicable.
+3. Identify the relevant functions and files.
+4. Explain validation, authentication and authorisation.
+5. Show success and failure paths.
+6. Create a Mermaid sequence diagram.
+7. Identify any assumptions or unverified behaviour.
+
+Include the main happy path and at least one meaningful failure path for important workflows.
+
+### 9. API design
+Document verified endpoints and interfaces:
+- HTTP method and path.
+- Purpose.
+- Authentication and authorisation requirements.
+- Request parameters and body.
+- Response structure.
+- Error responses.
+- Validation rules.
+- Source file and handler.
+- External dependencies and side effects.
+
+Include WebSocket, event, RPC or other interfaces if they exist.
+
+Never invent a contract for an endpoint that cannot be found.
+
+### 10. Data architecture and database design
+- Identify actual data stores.
+- Inspect schema definitions, migrations, ORM models, queries and storage utilities.
+- Explain entities, attributes, primary keys, foreign keys and relationships.
+- Document constraints and indexes where verified.
+- Explain data ownership and lifecycle.
+- Create an ER diagram in Mermaid when applicable.
+- Explain transactions and consistency requirements where relevant.
+- Document file storage, vector storage, caches or other stores if present.
+- Never invent a table or field.
+
+### 11. Low-Level Design (LLD)
+Explain the internal design of the most important modules:
+- Module and function responsibilities.
+- Classes and interfaces where applicable.
+- Call relationships and dependencies.
+- Data structures.
+- Important algorithms and business rules.
+- Validation and exception handling.
+- State transitions and concurrency where relevant.
+- Important design patterns only when actually present.
+
+Include Mermaid class or module diagrams where they improve understanding.
+
+Use code-backed examples, not generic textbook explanations.
+
+### 12. Security architecture
+Audit the implementation for:
+- Authentication and session handling.
+- Authorisation and resource ownership.
+- Input validation and injection risks.
+- Secret management.
+- CORS and CSRF where relevant.
+- File-upload and document-access security where relevant.
+- Rate limiting and abuse protection.
+- Sensitive-data logging.
+- Dependency and API security.
+
+Classify each item as verified, absent, uncertain, or not applicable. Do not claim security merely because a library is installed.
+
+### 13. Performance and scalability
+- Identify likely bottlenecks from the code.
+- Explain database query patterns and potential N+1 issues where applicable.
+- Discuss expensive computations, model calls, large payloads and concurrency.
+- Explain current scaling limits.
+- Propose realistic improvements and label them as recommendations rather than implemented features.
+- Do not claim production load capacity without measurements.
+
+### 14. Reliability and failure handling
+- Timeouts, retries and fallbacks.
+- Partial failures across dependencies.
+- Database and external API errors.
+- Logging and observability.
+- Data consistency and recovery.
+- Identify actual protections and missing protections.
+
+### 15. Deployment and runtime architecture
+Inspect the repository for Dockerfiles, Compose files, environment configuration, CI/CD, hosting configuration and infrastructure definitions.
+
+Create a deployment diagram only for verified infrastructure.
+
+Separate:
+- Current local development setup.
+- Verified deployed infrastructure.
+- Proposed production architecture.
+
+Do not assume a cloud provider or production deployment exists.
+
+### 16. Important architectural decisions and trade-offs
+For major decisions, use:
+- Decision.
+- Evidence from the implementation.
+- Problem addressed.
+- Advantages.
+- Costs and limitations.
+- Alternatives.
+- Whether the decision is documented or inferred.
+
+### 17. Limitations, technical debt and future improvements
+Prioritise findings by severity and impact. Reference relevant code locations and give actionable fixes.
+
+Keep implemented features separate from proposed features.
+
+### 18. Interview explanation guide
+Create three versions based on the actual project:
+
+A. A 30-second project summary.
+
+B. A two-minute architecture explanation.
+
+C. A five-to-ten-minute deep architecture walkthrough.
+
+Include an easy-to-draw HLD diagram and a logical explanation order. Write in natural spoken English, not as a textbook.
+
+### 19. Interview questions and answers
+Generate project-specific questions covering:
+- HLD and LLD.
+- Component responsibilities.
+- API and database design.
+- End-to-end request flow.
+- Algorithms and important implementation details.
+- Authentication and security.
+- Scaling and performance.
+- Reliability and failure cases.
+- Trade-offs and alternative designs.
+- Weaknesses or incomplete features.
+
+Give concise but technically defensible answers based on the actual code. If the answer is unknown, state what needs to be inspected instead of fabricating one.
+
+### 20. Architecture learning checklist
+Finish with a progressive checklist:
+- First: understand the system overview and HLD.
+- Second: explain the major request flows.
+- Third: understand APIs and database schema.
+- Fourth: understand LLD and key algorithms.
+- Fifth: defend security, scalability and trade-offs.
+- Sixth: practise the interview walkthrough.
+
+For every stage, specify what I should be able to explain without looking at the document.
+
+## Diagram quality requirements
+
+Use Mermaid diagrams that render in standard Markdown viewers.
+
+Include, where appropriate:
+- System context diagram.
+- HLD component diagram.
+- Sequence diagrams for key workflows.
+- ER diagram.
+- LLD module/class diagram.
+- Deployment diagram.
+
+Use accurate names and connections grounded in the source code. Keep diagrams readable and split large diagrams into smaller ones rather than creating one enormous diagram.
+
+## Quality-control pass
+
+Before finishing:
+1. Cross-check every major component against source files.
+2. Check every documented API endpoint against its actual handler.
+3. Verify database entities and relationships against actual schema or models.
+4. Ensure each workflow follows real function calls and dependencies.
+5. Remove unsupported claims and invented implementation details.
+6. Mark unknowns and recommendations clearly.
+7. Check that Mermaid syntax is valid.
+8. Ensure the document teaches both the actual architecture and how to explain it in an interview.
+
+Create the document and report its exact path, the major areas inspected, any important unknowns, and any diagrams or workflows that could not be verified.
+
+Do not rewrite or refactor the application as part of this task.

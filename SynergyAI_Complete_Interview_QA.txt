@@ -1,0 +1,1673 @@
+
+================================================================================
+         SYNERGYAI — COMPLETE INTERVIEW Q&A REFERENCE DOCUMENT
+         =====================================================
+         Derived from Actual Codebase Analysis | ~300+ Questions
+================================================================================
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 1: PROJECT OVERVIEW & MOTIVATION (Q1–Q6)                          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Q1. What is SynergyAI?
+─────────────────────
+SynergyAI is an enterprise-grade Mergers and Acquisitions (M&A) platform that
+automates deal sourcing, streamlines due diligence, and generates deep financial
+intelligence using AI. It combines a Next.js 15 frontend with a FastAPI backend,
+leveraging local LLMs (via Ollama), RAG (Retrieval-Augmented Generation) with
+FAISS vector search, Redis caching, and a PostgreSQL database (via Supabase).
+
+It provides features like:
+- AI-powered deal sourcing with strategic fit scoring
+- Virtual Data Room (VDR) with semantic search
+- One-click investment memo generation
+- Monte Carlo valuation simulations
+- Corporate knowledge graph visualization
+- Risk and synergy scoring
+- Role-based access control (RBAC)
+
+
+Q2. Why did you build SynergyAI?
+─────────────────────────────────
+M&A is one of the most complex, data-intensive domains in finance. Investment
+bankers, analysts, and private equity firms spend weeks manually reviewing
+thousands of pages of documents, calculating valuations, and writing investment
+memos. SynergyAI was built to:
+1. Automate repetitive M&A workflows using AI
+2. Demonstrate a production-grade full-stack AI application
+3. Showcase integration of local LLMs, RAG pipelines, and real-time caching
+4. Provide a scalable, multi-user, multi-tenant collaboration platform
+
+
+Q3. What problem does it solve?
+───────────────────────────────
+- Manual due diligence is slow: analysts read 1000+ pages of documents
+- Valuation modeling is error-prone and siloed
+- Risk identification is subjective without AI pattern recognition
+- Collaboration is fragmented across email, spreadsheets, and file shares
+- Confidential data leaks via cloud-based AI APIs
+
+SynergyAI solves these by:
+  Using RAG to let users "chat" with their documents
+  Auto-generating risk profiles, synergy scores, and investment memos
+  Running all AI locally (Ollama) so no data leaves the infrastructure
+  Providing project-level data isolation and RBAC
+
+
+Q4. Who are the intended users?
+───────────────────────────────
+- Investment Bankers conducting M&A advisory
+- Private Equity analysts performing due diligence
+- Corporate Development teams evaluating acquisition targets
+- Analysts performing financial modeling and risk assessment
+- Fund managers overseeing deal pipelines
+
+RBAC roles in the system:
+  Admin    -> Full project control, manage members, delete projects
+  Editor   -> Can modify project data, upload documents, run AI analyses
+  Viewer   -> Read-only access to project dashboards
+
+
+Q5. Why is M&A a good use case for AI?
+───────────────────────────────────────
+M&A involves:
+1. Massive unstructured data (legal contracts, financial reports, SEC filings)
+2. Pattern recognition (risk identification across thousands of clauses)
+3. Quantitative modeling (valuations, Monte Carlo simulations)
+4. Natural language understanding (summarizing complex documents)
+5. Time pressure (deals have strict deadlines)
+
+AI excels at all five. LLMs can summarize 100-page contracts in seconds.
+Vector search finds relevant clauses across gigabytes of documents instantly.
+This makes M&A one of the highest-ROI verticals for AI automation.
+
+
+Q6. What makes SynergyAI different from a normal chatbot?
+─────────────────────────────────────────────────────────
+A normal chatbot is a single-turn Q&A interface. SynergyAI is fundamentally
+different:
+
+Feature               | Normal Chatbot   | SynergyAI
+──────────────────────|──────────────────|────────────────────────────
+Data Source           | Training data    | User's own VDR documents
+Architecture          | API call to GPT  | Local LLM + RAG + FAISS
+Output                | Text response    | Structured JSON, scores, PDFs, reports
+Multi-user            | No               | Yes, with RBAC + RLS
+Domain Knowledge      | Generic          | Fine-tuned for M&A
+Data Privacy          | Cloud-dependent  | 100% local inference
+Caching               | None             | Redis + hover-to-predict
+Financial Modeling    | None             | Monte Carlo, DCF, Comps
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 2: MAJOR MODULES & ARCHITECTURE (Q7-Q8)                           ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Q7. What are the major modules?
+───────────────────────────────
+
+[FRONTEND MODULES (Next.js 15)]
+  Landing Page       -> src/components/features/landing/
+  Dashboard          -> src/components/features/dashboard/
+    Pipeline Narrative (AI-generated briefing)
+    Chart Data (ECharts/Recharts)
+  Deal Sourcing      -> src/components/features/sourcing/
+    Strategic Search with SSE streaming
+  Project Mission Control -> src/components/features/project/
+    Knowledge Graph (ECharts force-directed)
+    Alerts and Events
+    Team Management
+  Analytics Module   -> src/components/features/analytics/
+    Synergy Gauge (SynergyGauge.tsx)
+    Risk Profile
+  Virtual Data Room  -> src/components/features/vdr/
+    Document Upload (react-dropzone)
+    Semantic Search
+    AI Q&A Chat
+  Valuation Module   -> src/components/features/valuation/
+    Monte Carlo Simulations
+    Scenario Analysis
+  Reports / Memos    -> src/components/features/reports/
+    One-Click Investment Memo (PDF export)
+  Knowledge Library  -> src/components/features/knowledge/
+  Notes              -> src/components/features/notes/
+  Intelligence Hub   -> src/components/features/intelligence/
+    Market Intelligence
+    News Feed
+  Settings           -> src/components/features/settings/
+  Team Management    -> src/components/features/team/
+
+[BACKEND MODULES (FastAPI)]
+  Routers:
+    auth.py       -> Signup/Login (Supabase Auth)
+    projects.py   -> CRUD for projects, teams, tasks, watchlists
+    ai.py         -> AI endpoints (RAG queries, risk, synergy, memo,
+                     Monte Carlo, knowledge graph, deal sourcing, etc.)
+    vdr.py        -> VDR document management, upload, chat, annotations
+    knowledge.py  -> Knowledge library (global docs, not project-scoped)
+  Core:
+    config.py          -> Supabase + Ollama configuration
+    security.py        -> JWT auth + RBAC (member/admin checks)
+    redis_cache.py     -> Redis client singleton
+    cache_decorator.py -> @cached decorator with smart TTL
+    cache_warmer.py    -> APScheduler-based pre-warming
+    ai_batching.py     -> Batch parallel AI calls
+    streaming_cache.py -> Stream + cache AI responses
+  Services:
+    market.py           -> Live market data (yfinance)
+    news.py             -> NewsAPI integration
+    prompt_templates.py -> Structured prompts + fallbacks
+  RAG Pipeline:
+    rag_pipeline.py -> FAISS index + SentenceTransformer + chunking
+
+
+Q8. System Architecture - Complete Workflow
+───────────────────────────────────────────
+
+    +─────────────────────────────────────────────────────────────+
+    |                      USER'S BROWSER                         |
+    |  +─────────────────────────────────────────────────────+    |
+    |  |            NEXT.JS 15 FRONTEND                       |    |
+    |  |  +──────────+ +───────────+ +────────────────────+  |    |
+    |  |  | Supabase | |  Zustand  | |  useEnhancedCache  |  |    |
+    |  |  |  Auth    | |  Store    | |  (Global Map)      |  |    |
+    |  |  +────+─────+ +───────────+ +─────────+──────────+  |    |
+    |  |       |                                |              |    |
+    |  |       |  +──────────────────────────────+              |    |
+    |  |       |  |  onMouseEnter -> /api/prefetch              |    |
+    |  |       v  v                                             |    |
+    |  |  +─────────────────────────────────────────────────+  |    |
+    |  |  |        HTTP/REST API CALLS                       |  |    |
+    |  |  |   Authorization: Bearer <supabase_jwt_token>      |  |    |
+    |  |  +──────────────────────+────────────────────────── +  |    |
+    |  +─────────────────────────|───────────────────────────+    |
+    +────────────────────────────|────────────────────────────────+
+                                 |
+                    +────────────v────────────+
+                    |    FASTAPI BACKEND       |
+                    |    (Port 8000)           |
+                    |                          |
+                    |  +──────────────────+   |
+                    |  |  CORS Middleware  |   |
+                    |  |  Request Logger   |   |
+                    |  +────────+─────────+   |
+                    |           |               |
+                    |  +────────v─────────+   |
+                    |  |  JWT Validation   |   |
+                    |  |  (security.py)    |   |
+                    |  |  get_current_     |   |
+                    |  |  user_id()        |   |
+                    |  +────────+─────────+   |
+                    |           |               |
+                    |  +────────v─────────+   |
+                    |  |  ROUTERS          |   |
+                    |  | +──────────────+  |   |
+                    |  | | auth.py      |  |   |
+                    |  | | projects.py  |  |   |
+                    |  | | ai.py        |──+───+──> Ollama (LLM)
+                    |  | | vdr.py       |──+───+──> RAG Pipeline
+                    |  | | knowledge.py |  |   |
+                    |  | +──────────────+  |   |
+                    |  +────────+─────────+   |
+                    |           |               |
+                    |  +────────v─────────+   |
+                    |  |  @cached          |   |
+                    |  |  (SmartCache)     |──+───> Redis (Cache)
+                    |  +────────+─────────+   |
+                    |           |               |
+                    |  +────────v─────────+   |
+                    |  |  Supabase Client  |──+───> PostgreSQL (Supabase)
+                    |  |  (service_role)   |   |
+                    |  +──────────────────+   |
+                    |                          |
+                    |  +──────────────────+   |
+                    |  |  APScheduler      |   |
+                    |  |  (BackgroundJobs) |   |
+                    |  |  Cache warming    |   |
+                    |  |  every 2-15 mins  |   |
+                    |  +──────────────────+   |
+                    +──────────────────────────+
+
+
+How does frontend communicate with backend?
+───────────────────────────────────────────
+1. Frontend uses standard HTTP fetch() calls to FastAPI REST endpoints
+2. Every request includes Authorization: Bearer <jwt_token> header
+3. The JWT token comes from Supabase Auth (stored in cookies via @supabase/ssr)
+4. FastAPI validates the JWT using supabase.auth.get_user(token) in security.py
+5. For streaming (deal sourcing), SSE via StreamingResponse is used
+6. Frontend also directly queries Supabase for auth state (e.g., getUser())
+
+Flow:
+  User Login -> Supabase Auth -> JWT stored in cookie
+                                        |
+  Dashboard Load -> fetch('/api/dashboard/narrative', {
+                      headers: { Authorization: `Bearer ${jwt}` }
+                    })
+                                        |
+  FastAPI -> get_current_user_id() -> supabase.auth.get_user(token)
+                                        |
+  If valid -> proceed to route handler -> query Supabase DB -> return JSON
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 3: TECHNOLOGY CHOICES (Q13-Q18)                                    ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Why did you choose Next.js?
+───────────────────────────
+1. Server-Side Rendering (SSR) for SEO and faster initial page loads
+2. App Router (Next.js 15) for file-based routing
+3. Built-in API routes (though we use FastAPI as the primary backend)
+4. Excellent React ecosystem: Shadcn UI, Radix, Tanstack Query
+5. Middleware support for authentication guards (src/lib/middleware.ts)
+   Redirects unauthenticated users away from /dashboard/* routes
+6. TypeScript support for type safety
+7. Our frontend uses: React 19, Tailwind CSS, Zustand (state), ECharts,
+   Recharts, jsPDF, react-dropzone, react-markdown, @hello-pangea/dnd (Kanban)
+
+
+Q13. Why FastAPI instead of Node.js/Express?
+────────────────────────────────────────────
+1. Python is the lingua franca of AI/ML: all our AI libraries
+   (FAISS, sentence-transformers, numpy, reportlab) are Python-native
+2. FastAPI has native async/await support: critical for our parallel
+   LLM calls using asyncio.gather()
+3. Automatic request validation via Pydantic models
+4. Auto-generated OpenAPI documentation
+5. Dependency injection for auth: user_id: str = Depends(get_current_user_id)
+6. We fire 5+ concurrent Ollama prompts per request: Python asyncio handles
+   this naturally without callback hell
+
+If we used Express, we would need Python microservices anyway for FAISS +
+sentence-transformers, adding unnecessary network hops and complexity.
+
+
+Q14. Why PostgreSQL?
+────────────────────
+1. M&A data is highly relational:
+   projects -> project_members -> users
+   projects -> vdr_documents -> document_annotations
+   companies -> executive_roles -> executives
+   companies -> company_relationships
+   projects -> project_tasks, valuation_simulations, etc.
+2. ACID compliance for financial data
+3. Support for JSONB columns (financial_summary, industry)
+4. pgvector extension for potential embedded vector search
+5. Row Level Security (RLS) for multi-tenant data isolation
+6. Foreign key constraints prevent orphaned data
+
+
+Q15. Why Supabase?
+──────────────────
+Supabase provides a complete backend-as-a-service:
+1. PostgreSQL database with RLS
+2. Built-in Auth (email/password, OAuth)
+3. Realtime subscriptions
+4. Auto-generated REST API
+5. Storage for files
+6. Dashboard for database management
+
+We use it because it eliminates boilerplate: auth, user management,
+database provisioning, and RLS are all pre-configured.
+
+
+Q16. What does Supabase actually provide?
+─────────────────────────────────────────
+In our app specifically:
+  Authentication: sign_up(), sign_in_with_password(), get_user()
+  Database: PostgreSQL with tables for users, projects, companies, etc.
+  RPC Functions: get_user_projects, get_project_team_members,
+                  get_categories_with_counts, create_project_and_add_members
+  Row Level Security: Project-level data isolation
+  Client Libraries: @supabase/supabase-js (frontend), supabase-py (backend)
+
+Backend uses: Service Role Key (bypasses RLS for admin operations)
+Frontend uses: Anon Key (respects RLS)
+
+
+Why not use MongoDB?
+────────────────────
+MongoDB is document-based (NoSQL). M&A data is inherently relational:
+  A project has members (many-to-many via project_members)
+  A company has executives via executive_roles (join table)
+  Documents belong to projects, annotations belong to documents
+  Tasks reference projects AND users
+
+With MongoDB, you'd either:
+1. Embed everything -> massive document bloat, update anomalies
+2. Reference manually -> losing all relational guarantees
+
+PostgreSQL gives us:
+  JOINs for complex queries (knowledge graph, team + role lookups)
+  Foreign keys for referential integrity
+  JSONB for semi-structured data (financial_summary, industry)
+  RLS for security
+  Strong consistency (ACID)
+
+
+Q18. Why use a relational database for M&A?
+───────────────────────────────────────────
+M&A entities have strict relationships:
+  Company -> has many Executives (via executive_roles)
+  Company -> has many Relationships (subsidiaries, competitors)
+  Project -> belongs to a Company (via company_cin)
+  Project -> has many Members (via project_members with roles)
+  Project -> has many VDR Documents
+  Document -> has many Annotations
+  User -> can be in many Projects with different roles
+
+This is a classic relational schema. Using NoSQL here would be an
+anti-pattern: you'd lose JOIN capability, referential integrity,
+and RLS-based security.
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 4: BACKEND ARCHITECTURE (Q20-Q27)                                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+How do you structure FastAPI?
+─────────────────────────────
+
+backend/
+  app/
+    __init__.py
+    main.py              <- App creation, CORS, routers, schedulers
+    core/
+      config.py          <- Supabase client, Ollama URL
+      security.py        <- JWT auth dependencies
+      redis_cache.py     <- Redis singleton
+      cache_decorator.py <- @cached decorator
+      cache_warmer.py    <- APScheduler cache warming
+      ai_batching.py     <- Batch AI calls
+      streaming_cache.py <- Stream+cache
+    routers/
+      auth.py            <- /api/auth/signup, /api/auth/login
+      projects.py        <- /api/projects, /api/user/tasks
+      ai.py              <- AI endpoints (1780 lines, 40+ endpoints)
+      vdr.py             <- VDR document management
+      knowledge.py       <- Knowledge library management
+    services/
+      market.py          <- yfinance market data
+      news.py            <- NewsAPI integration
+      prompt_templates.py <- LLM prompt engineering
+  rag_pipeline.py        <- FAISS + SentenceTransformer
+  synergyai_index.faiss  <- FAISS index (~1 GB)
+  synergyai_text_map.pkl <- Chunk metadata (~376 MB)
+  ollama_factory/        <- LoRA adapter files
+  synergyai_final_standalone_model/ <- Fine-tuned model weights
+
+
+How do you handle errors?
+─────────────────────────
+1. Every endpoint is wrapped in try/except
+2. HTTPException with proper status codes:
+   400: Bad request (invalid input)
+   401: Not authenticated (invalid/missing JWT)
+   403: Forbidden (not a project member, not an admin)
+   404: Resource not found
+   500: Internal server error
+3. Graceful AI fallbacks: if Ollama is down, pre-written fallback content
+   is returned (see prompt_templates.py)
+4. OOM protection: if parallel LLM calls cause Out-of-Memory, the system
+   catches the error and returns a degraded response
+
+Example from ai.py:
+  except httpx.RequestError:
+      return {"answer": "AI service is currently unreachable.", "sources": []}
+  except httpx.HTTPStatusError:
+      return {"answer": "AI model encountered OOM error.", "sources": []}
+
+
+Q24. How do you validate API requests?
+──────────────────────────────────────
+Using Pydantic models (FastAPI's built-in validation):
+
+  class UserSignUpCredentials(BaseModel):
+      name: str
+      email: str
+      password: str
+      confirmPassword: str = Field(..., alias='confirmPassword')
+
+  class AIQuery(BaseModel):
+      question: str
+      project_id: Optional[str] = None
+
+  class SimulationRunRequest(BaseModel):
+      variables: Dict
+
+If the request body doesn't match the schema, FastAPI auto-returns
+422 Unprocessable Entity with detailed validation errors.
+
+
+Q26. How do you handle authentication?
+──────────────────────────────────────
+1. User signs up/logs in via /api/auth/signup or /api/auth/login
+2. These call Supabase Auth: supabase.auth.sign_up() / sign_in_with_password()
+3. Supabase returns a JWT token (session)
+4. Frontend stores the JWT in cookies via @supabase/ssr
+5. Every subsequent API call includes: Authorization: Bearer <jwt>
+6. Backend extracts and validates the token:
+
+   async def get_current_user_id(request: Request) -> str:
+       token = request.headers.get("Authorization").split(" ")[-1]
+       user_res = supabase.auth.get_user(token)
+       return user_res.user.id
+
+This is a FastAPI Dependency: injected into every protected route:
+   async def get_projects(user_id: str = Depends(get_current_user_id)):
+
+Additionally, the Next.js middleware (src/lib/middleware.ts) checks
+auth on the frontend side and redirects unauthenticated users away
+from /dashboard/* routes.
+
+
+Q27. How do you handle authorization?
+─────────────────────────────────────
+Three levels of authorization:
+
+Level 1: Authentication (get_current_user_id)
+  Is the user logged in? Valid JWT?
+
+Level 2: Project Membership (get_project_member_auth)
+  Is this user a member of this project?
+  Queries project_members table for user_id + project_id
+
+Level 3: Admin Authorization (get_project_admin_auth)
+  Is this user an ADMIN of this project?
+  Same query but checks role == 'Admin'
+
+Usage in routes:
+  # Any authenticated user
+  user_id: str = Depends(get_current_user_id)
+
+  # Only project members
+  user_id: str = Depends(get_project_member_auth)
+
+  # Only project admins
+  admin_id: str = Depends(get_project_admin_auth)
+
+Admin-only operations:
+  Archive project
+  Delete project (requires name confirmation)
+  Manage team members
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 5: SUPABASE, AUTH & RLS (Q77-Q82)                                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Why Supabase?
+─────────────
+See Q15 above. Key reason: it bundles PostgreSQL + Auth + RLS into
+one managed service, eliminating weeks of boilerplate.
+
+
+Is Supabase a database?
+───────────────────────
+Supabase IS a PostgreSQL database, but it's more than that. It's a
+Backend-as-a-Service (BaaS) that wraps PostgreSQL with:
+  Auth layer (JWT-based)
+  REST API auto-generation (PostgREST)
+  Realtime engine
+  Edge Functions
+  Storage
+  Dashboard/Admin UI
+
+
+How did you implement authentication?
+─────────────────────────────────────
+Backend (auth.py):
+  POST /api/auth/signup -> supabase.auth.sign_up({email, password, options})
+  POST /api/auth/login  -> supabase.auth.sign_in_with_password({email, password})
+
+Frontend (supabaseClient.ts):
+  const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+Middleware (middleware.ts):
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user && path.startsWith('/dashboard')) -> redirect to '/'
+
+
+Q77. What is Row Level Security?
+────────────────────────────────
+RLS is a PostgreSQL feature where access policies are defined at the
+DATABASE level. Even if someone has the SQL credentials, they can only
+see rows they're authorized to access.
+
+Example policy:
+  CREATE POLICY "Users can view their own projects"
+  ON projects
+  FOR SELECT
+  USING (
+    id IN (
+      SELECT project_id FROM project_members
+      WHERE user_id = auth.uid()
+    )
+  );
+
+This means: even if you query SELECT * FROM projects, you'll ONLY
+get projects where you are a member.
+
+
+Q78. Why is RLS important for your project?
+───────────────────────────────────────────
+SynergyAI is a multi-tenant M&A platform. Multiple companies use it
+simultaneously. If Company A uploads confidential financial documents,
+Company B must NEVER see them. RLS enforces this at the database level.
+
+Even if there's a bug in the application code, RLS acts as a last line
+of defense: the database itself refuses to return unauthorized rows.
+
+
+How would you implement project-level data isolation?
+─────────────────────────────────────────────────────
+1. Every table has a project_id or user_id column
+2. RLS policies check auth.uid() against project_members
+3. Backend uses service_role key (bypasses RLS) but manually checks:
+
+   async def get_project_member_auth(project_id, user_id):
+       res = supabase.table('project_members')
+           .select('role')
+           .eq('project_id', project_id)
+           .eq('user_id', user_id)
+           .single().execute()
+       if not res.data:
+           raise HTTPException(403, "Not a project member")
+
+4. For VDR documents, queries are always scoped:
+   supabase.table('vdr_documents').select('*').eq('project_id', project_id)
+
+
+Q80. Can frontend users bypass RLS?
+────────────────────────────────────
+No. The frontend uses the ANON key, which has restricted permissions.
+RLS policies are enforced server-side by PostgreSQL. The browser cannot
+modify SQL queries. It can only call the REST API, which goes through
+PostgREST (which enforces RLS) or our FastAPI (which uses service_role
+but manually checks permissions).
+
+
+Q81. What happens if someone directly calls your API?
+────────────────────────────────────────────────────
+They need a valid Supabase JWT token. Without it:
+  get_current_user_id() raises HTTPException(401, "Not authenticated")
+
+With a valid token but wrong project:
+  get_project_member_auth() raises HTTPException(403, "Not a member")
+
+With a valid token and correct project but wrong role:
+  get_project_admin_auth() raises HTTPException(403, "Not an admin")
+
+
+Q82. Where should authorization be enforced?
+────────────────────────────────────────────
+Defense in depth: enforce at EVERY layer:
+1. Frontend middleware: Redirect unauthenticated users
+2. API layer: FastAPI Depends() validates JWT
+3. Business logic: Check project membership/role
+4. Database: RLS policies as last line of defense
+
+Our actual implementation enforces at layers 1, 2, and 3.
+RLS (layer 4) is configured in Supabase dashboard.
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 6: API ENDPOINTS (Q21)                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Q21. What endpoints did you create?
+───────────────────────────────────
+
+[AUTH]
+POST   /api/auth/signup
+POST   /api/auth/login
+
+[PROJECTS]
+GET    /api/projects
+POST   /api/projects
+GET    /api/projects/{id}/mission_control
+GET    /api/projects/{id}/status/current
+PUT    /api/projects/{id}/status
+GET    /api/projects/{id}/status/history
+GET    /api/projects/{id}/status/options
+GET    /api/projects/{id}/access_summary
+PUT    /api/projects/{id}/archive
+DELETE /api/projects/{id}
+GET    /api/user/tasks
+POST   /api/user/tasks
+GET    /api/projects/{id}/team
+POST   /api/projects/{id}/team
+DELETE /api/projects/{id}/team/{user_id}
+GET    /api/user/profile
+GET    /api/projects/{id}/user_profile
+GET    /api/projects/{id}/watchlists
+POST   /api/watchlists
+
+[AI AND ANALYTICS]
+POST   /api/ai/query                     -> RAG-powered Q&A
+POST   /api/companies/strategic_search   -> Deal sourcing (SSE streaming)
+GET    /api/dashboard/narrative           -> AI pipeline briefing
+GET    /api/dashboard/chart_data          -> Dashboard charts
+POST   /api/export/summary_pdf           -> PDF export
+GET    /api/projects/{id}/risk_profile    -> AI risk analysis
+GET    /api/projects/{id}/synergy_score   -> AI synergy scoring
+GET    /api/projects/{id}/knowledge_graph -> Corporate relationship graph
+GET    /api/projects/{id}/alerts          -> Events/alerts feed
+GET    /api/projects/{id}/generate_memo   -> One-click investment memo
+GET    /api/projects/{id}/key_risks       -> Deep risk analysis
+GET    /api/projects/{id}/tasks           -> Project tasks
+POST   /api/projects/{id}/generate_tasks  -> AI task suggestions
+PUT    /api/tasks/{id}/status             -> Kanban status update
+GET    /api/projects/{id}/intelligence    -> AI target intelligence
+GET    /api/projects/{id}/industry_updates -> Industry insights
+GET    /api/projects/{id}/ai_summary      -> AI executive summary
+GET    /api/intelligence/market           -> Live market data
+GET    /api/intelligence/news             -> M&A news feed
+POST   /api/projects/{id}/simulations/run -> Monte Carlo simulation
+GET    /api/projects/{id}/simulations     -> List simulations
+POST   /api/projects/{id}/simulations     -> Save simulation
+GET    /api/projects/{id}/scenarios       -> Valuation scenarios
+GET    /api/projects/{id}/ai_chats        -> Project AI chat history
+POST   /api/projects/{id}/ai_chat         -> Project AI chat
+GET    /api/notes                         -> User notes
+GET    /api/chat/history                  -> Chat conversations
+POST   /api/chat/general                  -> General AI chat
+
+[VDR]
+POST   /api/vdr/documents                -> Create document record
+POST   /api/vdr/documents/upload          -> Upload file
+GET    /api/projects/{id}/vdr/documents   -> List documents
+GET    /api/projects/{id}/vdr/categories  -> Categories with counts
+GET    /api/vdr/documents/{id}/download   -> Download file
+GET    /api/vdr/documents/{id}/preview    -> Preview content
+DELETE /api/vdr/documents/{id}            -> Delete document
+POST   /api/projects/{id}/vdr/search      -> Semantic/fulltext search
+POST   /api/projects/{id}/vdr/qa          -> VDR Q&A with RAG
+GET    /api/projects/{id}/vdr/annotations -> Document annotations
+POST   /api/vdr/annotate                  -> AI auto-annotate
+
+[KNOWLEDGE LIBRARY]
+POST   /api/knowledge/documents
+POST   /api/knowledge/upload
+GET    /api/knowledge/documents
+GET    /api/knowledge/categories-list
+POST   /api/knowledge/search
+POST   /api/knowledge/qa
+
+[CACHE]
+POST   /api/cache/warm/{user_id}          -> Manual cache warm
+GET    /api/cache/stats                   -> Cache hit/miss stats
+POST   /api/cache/clear                   -> Emergency cache clear
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 7: RAG PIPELINE (Q84-Q110)                                          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+What is RAG?
+────────────
+Retrieval-Augmented Generation. Instead of relying solely on the LLM's
+training data, RAG retrieves relevant documents from a knowledge base
+and injects them into the prompt as context. The LLM then generates
+answers grounded in actual data.
+
+
+Why did you need RAG?
+─────────────────────
+1. LLMs don't know about our users' confidential M&A documents
+2. Fine-tuning alone can't give the model document-specific knowledge
+3. Documents change frequently: you can't re-train for every upload
+4. RAG grounds the LLM's response in factual document content
+5. It's critical for due diligence: answers MUST reference actual clauses
+
+
+Explain your complete RAG pipeline.
+───────────────────────────────────
+
+Document Upload -> Text Extraction -> Chunking -> Embedding -> FAISS Index
+                                                                    |
+User Query -> Embedding -> FAISS Search -> Top-K Chunks -> Prompt -> LLM -> Answer
+
+DETAILED STEP-BY-STEP (from rag_pipeline.py):
+
+Step 1: DOCUMENT INGESTION (ingest_document method)
+  File uploaded via POST /api/vdr/documents/upload
+  Saved to uploads/{project_id}/{uuid}{extension}
+  Background task: rag_system.ingest_document(file_path, filename)
+
+Step 2: TEXT EXTRACTION
+  PDF: fitz.open(file_path) -> page.get_text() (PyMuPDF)
+  DOCX: docx.Document(file_path) -> paragraph.text
+  TXT: open() and read()
+
+Step 3: CHUNKING
+  Split text by whitespace into words
+  Chunk size: 400 words
+  Overlap: 50 words
+  Each chunk stored with source filename
+
+Step 4: EMBEDDING
+  Model: BAAI/bge-small-en-v1.5 (SentenceTransformer)
+  Dimension: 384
+  Each chunk -> 384-dimensional vector
+  Uses GPU if available (torch.cuda.is_available())
+
+Step 5: INDEXING
+  Vectors added to FAISS index
+  Chunk metadata added to chunk_map (list of dicts)
+  Index persisted to synergyai_index.faiss (~1 GB)
+  Map persisted to synergyai_text_map.pkl (~376 MB)
+  Thread lock ensures concurrent safety
+
+Step 6: SEARCH (search method)
+  User's query -> embedding (384-dim vector)
+  FAISS.search(query_embedding, k=5)
+  Returns top-K nearest chunks
+  Optional: filter by allowed_sources (project-scoped VDR)
+  When filtering: search_k = 2000, then post-filter to k results
+
+Step 7: PROMPT CONSTRUCTION
+  Retrieved chunks injected into prompt as "Context"
+  Format: "Context from VDR Documents:\n{chunks}\n\nQuestion: ...\n\nAnswer:"
+
+Step 8: LLM GENERATION
+  Prompt sent to Ollama (localhost:11434/api/generate)
+  Model: synergyai-specialist (fine-tuned LLaMA-3.1-8B)
+  Response parsed (often JSON extraction via regex)
+
+
+Why do you chunk documents?
+───────────────────────────
+1. LLMs have context window limits (LLaMA-3.1 = 128K tokens, but
+   practical prompts should be much shorter)
+2. Embedding entire documents would dilute semantic meaning
+3. Smaller chunks = more precise retrieval
+4. Different sections of a document discuss different topics
+5. Chunking enables overlapping to catch cross-boundary information
+
+
+Q87. Why not embed the entire PDF?
+──────────────────────────────────
+1. A 100-page PDF might be 50,000 words. A single embedding would lose
+   all nuance (one 384-dim vector can't capture everything)
+2. Retrieval would return the entire document instead of relevant sections
+3. LLM context window would overflow
+4. Search precision would plummet
+
+
+How large were your chunks?
+───────────────────────────
+400 words per chunk. This was chosen because:
+  Large enough to contain a complete paragraph or clause
+  Small enough to maintain semantic coherence
+  Aligned with the embedding model's optimal input length
+  ~500-600 tokens per chunk (well within model limits)
+
+
+Did you use overlapping chunks? / Q90. Why chunk overlap?
+─────────────────────────────────────────────────────────
+Yes. Overlap = 50 words.
+
+From rag_pipeline.py:
+  chunk_size = 400
+  overlap = 50
+  i = 0
+  while i < len(words):
+      chunk_words = words[i:i + chunk_size]
+      i += chunk_size - overlap  # i += 350
+
+If a critical clause spans the boundary between two chunks, without
+overlap it would be split and potentially lost. The 50-word overlap
+ensures that boundary content appears in both adjacent chunks.
+
+
+Q91. What happens if a clause is split across chunks?
+────────────────────────────────────────────────────
+The 50-word overlap handles most cases. For very long clauses:
+1. Both adjacent chunks would contain partial content
+2. Top-K retrieval (k=5 or k=10) often retrieves both chunks
+3. The LLM sees both and can reconstruct the full meaning
+
+
+Q92. How would you improve chunking?
+────────────────────────────────────
+  Use sentence-boundary-aware chunking (spaCy or NLTK)
+  Implement section-header-based splitting (detect "Article 1:", etc.)
+  Use recursive character text splitting (LangChain style)
+  Implement sliding window with dynamic sizing based on document structure
+  Add semantic chunking: split at points where topic similarity drops
+
+
+What is an embedding?
+─────────────────────
+An embedding is a dense numerical vector that captures the semantic meaning
+of text. Text with similar meaning produces vectors that are close together.
+
+"The company's revenue grew 20%" -> [0.12, -0.45, 0.78, ..., 0.33] (384 dims)
+"Sales increased by a fifth"     -> [0.11, -0.44, 0.79, ..., 0.32] (similar!)
+"The dog sat on the mat"         -> [0.85, 0.22, -0.11, ..., -0.67] (different)
+
+
+Q94. Why convert text to vectors?
+─────────────────────────────────
+1. Enables semantic search: find meaning, not just keyword matches
+2. "What are the company's liabilities?" matches "The firm owes $5M to..."
+3. SQL LIKE can only find exact keyword matches
+4. Vectors enable cosine similarity measurement in O(1) per comparison
+5. FAISS can search millions of vectors in milliseconds
+
+
+Q95. What embedding model did you use?
+──────────────────────────────────────
+BAAI/bge-small-en-v1.5 via SentenceTransformer
+
+From rag_pipeline.py:
+  EMBEDDING_MODEL_NAME = 'BAAI/bge-small-en-v1.5'
+  self.model = SentenceTransformer(EMBEDDING_MODEL_NAME, device=device)
+
+Why this model:
+  Only 130MB (fits easily on any GPU/CPU)
+  384-dimensional output (compact, fast to search)
+  Top-tier performance on MTEB benchmark for its size
+  Excellent for retrieval tasks (what RAG needs)
+
+
+What is the dimension of your embedding?
+────────────────────────────────────────
+384 dimensions. Each text chunk is represented as a point in 384-dim space.
+
+
+Euclidean distance vs cosine similarity?
+────────────────────────────────────────
+Euclidean distance = straight-line distance between two points
+  sqrt(sum((ai - bi)^2)) -> sensitive to vector magnitude
+Cosine similarity = angle between two vectors
+  cos(theta) = (A dot B) / (||A|| * ||B||) -> only cares about direction
+
+For text embeddings, cosine similarity is preferred because it's
+insensitive to document length (magnitude).
+
+FAISS IndexFlatL2 uses Euclidean distance by default, but with
+normalized embeddings (which BGE produces), L2 distance and
+cosine similarity are equivalent.
+
+
+Q99. How does semantic search work?
+───────────────────────────────────
+1. Convert query text -> 384-dim vector using same embedding model
+2. Search FAISS index for nearest neighbors
+3. Return chunks whose vectors are closest to the query vector
+4. "Closest" = smallest Euclidean distance (or largest cosine similarity)
+
+
+What is FAISS?
+──────────────
+Facebook AI Similarity Search. An open-source library for efficient
+similarity search in high-dimensional vector spaces.
+
+From rag_pipeline.py:
+  import faiss
+  self.index = faiss.read_index(FAISS_INDEX_PATH)
+  distances, indices = self.index.search(query_embedding, search_k)
+
+
+Q101-Q105. FAISS Details
+────────────────────────
+Why FAISS: Fast (sub-ms), local, GPU-capable, memory-efficient, battle-tested.
+Our index is ~1 GB.
+
+How it works: IndexFlatL2 (exact brute-force search):
+  Compute L2 distance between query and every stored vector
+  Return k vectors with smallest distances
+  O(n * d) where n = vector count, d = 384
+
+We use IndexFlatL2 (exact search, no approximation). Appropriate for
+our scale (<1M vectors). For >1M, switch to IVF or HNSW.
+
+
+Q106. Why vector search instead of SQL LIKE?
+───────────────────────────────────────────
+SQL LIKE '%liabilities%' only finds the exact word "liabilities".
+Vector search finds: "debts", "amounts owed", "financial obligations",
+"outstanding balances" -- all semantically similar.
+
+
+Q107-Q110. Top-K Retrieval
+──────────────────────────
+K values in our app:
+  Default k=5 for general queries
+  k=10 for risk analysis and synergy scoring
+  k=15 for deep key risk analysis
+
+Too small: Missing context
+Too large: Irrelevant chunks dilute prompt, latency increases
+
+Filtering by project:
+  docs_res = supabase.table('vdr_documents')
+      .select('file_name').eq('project_id', project_id).execute()
+  allowed_filenames = [doc['file_name'] for doc in docs_res.data]
+  context_chunks = rag_system.search(query, k=5, allowed_sources=allowed_filenames)
+
+Inside search():
+  search_k = 2000 if allowed_sources else k  # Over-retrieve
+  for i in indices[0]:
+      chunk = self.chunk_map[i]
+      if allowed_sources is None or chunk['source'] in allowed_sources:
+          filtered_results.append(chunk)
+      if len(filtered_results) >= k:
+          break
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 8: LLM & FINE-TUNING WITH LoRA (Q111-Q121) - DETAILED             ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+What is LLaMA-3?
+────────────────
+LLaMA-3 (Large Language Model Meta AI, version 3) is an open-source LLM
+by Meta. We use LLaMA-3.1-8B (8 billion parameters, 128K context window).
+
+From config.json in our model directory:
+  "model_type": "llama"
+  "hidden_size": 4096
+  "num_attention_heads": 32
+  "num_hidden_layers": 32
+  "num_key_value_heads": 8   <- Grouped Query Attention (GQA)
+  "vocab_size": 128256
+
+
+Q112. Why LLaMA-3?
+──────────────────
+1. Open-source: no API costs, no data leaving our infrastructure
+2. 8B parameters is runnable on consumer GPUs (8-16 GB VRAM)
+3. Excellent performance for its size
+4. Can be fine-tuned on domain-specific data
+5. 128K context window (enough for long documents)
+6. GQA makes inference efficient
+
+
+Q113. Why not GPT?
+──────────────────
+1. DATA PRIVACY: M&A documents are extremely confidential
+2. COST: GPT-4 per-token billing would be enormous (5+ prompts per request)
+3. LATENCY: Network round-trips add latency
+4. DEPENDENCY: External API outages break the app
+5. CUSTOMIZATION: Can't fine-tune GPT-4 for M&A
+6. Our local Ollama deployment gives full control
+
+
+Q114. What does "fine-tuned" mean?
+─────────────────────────────────
+Fine-tuning = taking a pre-trained LLM (LLaMA-3.1-8B) and further
+training it on domain-specific data. The model learns M&A terminology,
+financial analysis patterns, and structured output formats.
+
+
+Q115-Q119. Training Data and Format
+──────────────────────────────────
+Training data includes M&A reports, financial analyses, risk assessments,
+and structured Q&A pairs formatted as:
+  Instruction -> Context -> Response (JSON)
+
+The model uses a chat template format (chat_template.jinja):
+  <|begin_of_text|>
+  <|start_header_id|>system<|end_header_id|>
+  You are a senior M&A analyst...
+  <|start_header_id|>user<|end_header_id|>
+  Instruction: Generate a risk profile for XYZ Corp...
+  <|start_header_id|>assistant<|end_header_id|>
+  {"overallScore": 65, "topRisks": [...], ...}
+  <|end_of_text|>
+
+
+What is LoRA? - DETAILED MATHEMATICAL EXPLANATION
+──────────────────────────────────────────────────
+LoRA = Low-Rank Adaptation of Large Language Models
+
+THE PROBLEM:
+Fine-tuning a full 8B parameter model requires:
+  8B x 4 bytes (FP32) = 32 GB just for model weights
+  32 GB for gradients
+  32 GB for optimizer states (Adam)
+  = ~96 GB GPU memory -- impossible on consumer hardware
+
+THE LoRA SOLUTION:
+Instead of updating all 8B parameters, LoRA:
+1. FREEZES all original model weights (no gradient computation)
+2. Injects small trainable "adapter" matrices into attention layers
+3. Uses low-rank decomposition: delta_W = A x B
+   where A is (d x r) and B is (r x d), and r << d
+
+THE MATHEMATICS:
+  Original weight matrix W in R^(d x d) where d = 4096
+  Full fine-tune: Update all d^2 = 16.7M parameters per layer
+  LoRA: Add delta_W = A x B where A in R^(d x r), B in R^(r x d)
+  With r = 16: Only 2 * d * r = 2 * 4096 * 16 = 131,072 params per layer
+  Reduction: 131K vs 16.7M = 128x fewer parameters!
+
+  During forward pass:
+    output = W*x + alpha*(A*B)*x    (alpha = scaling factor)
+
+  During backpropagation:
+    Only A and B receive gradients (W is frozen)
+
+  Across all 32 transformer layers with attention (Q, K, V, O projections):
+    Total trainable params: ~4-8M (vs 8B) = 0.1% of original model
+
+WHY IT WORKS:
+  Research shows that the weight updates during fine-tuning have low
+  intrinsic dimensionality. This means the change matrix delta_W can be
+  accurately approximated by a low-rank matrix A*B without significant
+  information loss.
+
+  Intuition: Fine-tuning for M&A doesn't change the model's fundamental
+  language understanding. It only adjusts a few "directions" in the weight
+  space to emphasize financial terminology and structured output. These
+  few directions can be captured by a low-rank (r=16) matrix.
+
+BENEFITS:
+  Train on a single GPU (8-16 GB VRAM)
+  Training time: hours instead of days
+  Adapter files are small (~10-50 MB)
+  Can swap adapters for different domains
+  Original model knowledge is preserved
+
+
+Q121. What is QLoRA?
+────────────────────
+QLoRA = Quantized LoRA
+
+Takes LoRA further by:
+1. Loading the base model in 4-bit quantization (NF4)
+2. Applying LoRA adapters on top of the quantized model
+3. Computing gradients in 16-bit, but storing weights in 4-bit
+
+Memory savings:
+  Full model (FP32): 32 GB
+  LoRA (FP16):       16 GB
+  QLoRA (4-bit):      4 GB  <- Can train on a single RTX 3060!
+
+From our config.json:
+  "quantization_config": {
+      "load_in_8bit": true,
+      "quant_method": "bitsandbytes"
+  }
+
+Our model uses 8-bit quantization via bitsandbytes.
+
+
+COMPLETE FINE-TUNING PIPELINE:
+─────────────────────────────
+
+  +─────────────────+     +─────────────────+     +──────────────────+
+  | Training Data    |     | Base Model       |     | LoRA Config      |
+  | (M&A QA pairs)  |     | LLaMA-3.1-8B    |     | r=16, alpha=32   |
+  +────────+────────+     +────────+────────+     | target: q,k,v,o  |
+           |                       |               +────────+─────────+
+           v                       v                        |
+  +────────────────────────────────────────────────────────v──────────+
+  |                    TRAINING LOOP (PEFT + Transformers)             |
+  |  1. Load base model in 8-bit (bitsandbytes)                       |
+  |  2. Attach LoRA adapters to attention layers                      |
+  |  3. For each batch:                                                |
+  |     a. Forward pass: output = W*x + alpha*(A*B)*x                 |
+  |     b. Compute cross-entropy loss on response tokens              |
+  |     c. Backpropagate: compute gradients for A, B only             |
+  |     d. Update A, B with optimizer (AdamW)                          |
+  |  4. Save LoRA adapter weights                                      |
+  +────────────────────────────────+──────────────────────────────────+
+                                   |
+                                   v
+  +────────────────────────────────────────────────────────────────────+
+  |                    POST-TRAINING PIPELINE                          |
+  |  1. Merge LoRA adapters into base model                            |
+  |  2. Convert merged model to GGUF format (for Ollama)               |
+  |  3. Create Modelfile for Ollama                                    |
+  |  4. Register as "synergyai-specialist" in Ollama                   |
+  +────────────────────────────────────────────────────────────────────+
+
+  Evidence in codebase:
+    backend/convert_to_gguf.py exists for GGUF conversion
+    backend/ollama_factory/synergyai-llama3.1-8b-lora-adapter/
+    backend/synergyai_final_standalone_model/
+      -> 5 safetensors shards (~9 GB total)
+      -> config.json, tokenizer.json, generation_config.json
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 9: HALLUCINATION, SECURITY & PROMPT ENGINEERING (Q132-Q150)        ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Can RAG still hallucinate? YES.
+───────────────────────────────
+The LLM can misinterpret context, generate plausible-sounding but
+incorrect analysis, extrapolate beyond documents, or mix up chunks.
+
+
+Q134. How do you reduce hallucination?
+─────────────────────────────────────
+1. Grounding: Prompts say "Based ONLY on the provided context"
+2. JSON enforcement: Force structured output (parseable, verifiable)
+3. Fallbacks: If LLM output fails JSON parsing, use pre-written templates
+4. Source citation: Return source documents alongside answers
+5. Retry logic: get_ai_json_response() retries up to 3 times
+6. Regex extraction: Parse JSON from LLM output (handles extra text)
+
+
+What happens if no relevant document exists?
+─────────────────────────────────────────────
+  if not context_chunks:
+      context_text = "No relevant context was found in the document library."
+The LLM is instructed: "If you don't know, say you don't know."
+
+
+Q138-Q141. Prompt Construction & Security
+─────────────────────────────────────────
+Prompt pattern:
+  "Instruction: You are a senior M&A analyst.
+   Based ONLY on the provided context, generate a JSON object with...
+   Context from VDR Documents: {retrieved_chunks}
+   Response (JSON object only):"
+
+Design decisions:
+  Role assignment: "You are a senior M&A analyst"
+  Grounding constraint: "Based ONLY on the provided context"
+  Output format: "JSON object with structure: {...}"
+  Clear delimiters between instruction, context, and response
+
+Prompt injection from documents: Currently not explicitly guarded.
+Improvement: sanitize document content before injecting into prompts.
+
+
+Q142-Q150. Data Privacy & Security
+──────────────────────────────────
+ALL LLM inference runs locally via Ollama (localhost:11434)
+  -> No document data sent to external APIs
+  OLLAMA_SERVER_URL = "http://localhost:11434/api/generate"
+
+FAISS index stored locally on the server
+RAG search scoped to project-specific documents (allowed_sources)
+Authentication required for all VDR endpoints
+Document deletion removes both database record AND file
+
+JWT handling:
+  Frontend: Supabase JS client manages JWT lifecycle
+  API calls include: Authorization: Bearer <jwt>
+  Backend validates via supabase.auth.get_user()
+
+Secrets stored in environment variables (.env files):
+  backend/.env: SUPABASE_SERVICE_ROLE_KEY, REDIS_URL, etc.
+  .env.local: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 10: REDIS CACHING ARCHITECTURE (Q151-Q165)                         ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Why did you need caching?
+─────────────────────────
+LLM inference is SLOW. A single Ollama call takes 10-30 seconds.
+Some endpoints fire 5+ parallel LLM calls. Without caching, every
+page load would take 30-60 seconds. With Redis caching, subsequent
+loads are 15 milliseconds.
+
+
+Q152. What did you cache?
+─────────────────────────
+EVERYTHING expensive:
+  AI narrative summaries (TTL: 30 min)
+  Risk profiles (TTL: 10 min)
+  Synergy scores (TTL: 10 min)
+  Investment memos (TTL: 30 min)
+  Market intelligence (TTL: 3 min)
+  Project team data (TTL: 5 min)
+  VDR documents list (TTL: 5 min)
+  Knowledge graph data (TTL: 5 min)
+  Chat history (TTL: 5 min)
+  User profiles (TTL: 5 min)
+
+
+Why Redis?
+──────────
+1. In-memory data store: microsecond read/write
+2. Built-in TTL per key
+3. Supports pattern-based key deletion
+4. Persistence via AOF (append-only file)
+5. Docker-ready
+
+From docker-compose.yml:
+  redis:
+    image: redis:7.2-alpine
+    command: redis-server --appendonly yes --maxmemory 512mb
+             --maxmemory-policy allkeys-lru
+
+
+Q155-Q159. TTL and Cache Patterns
+─────────────────────────────────
+From cache_decorator.py (SmartCache.calculate_ttl):
+  "static":      3600    # 1 hour
+  "market":       180    # 3 minutes
+  "user":         600    # 10 minutes
+  "ai_heavy":    1800    # 30 minutes
+  "ai_light":     900    # 15 minutes
+  "project":      600    # 10 minutes
+  "documents":    300    # 5 minutes
+
+Dynamic adjustment during business hours (9 AM - 5 PM):
+  if 9 <= hour <= 17:
+      ttl_map = {k: v * 0.5 for k, v in ttl_map.items()}
+  During business hours, TTLs are HALVED.
+
+Cache-aside pattern (from redis_cache.py):
+  async def get_or_set(self, key, func, ttl=300):
+      cached = await self.get(key)        # 1. Check cache
+      if cached is not None:
+          return cached                   # 2. HIT -> return
+      result = await func()               # 3. MISS -> execute
+      if result is not None:
+          await self.set(key, result, ttl) # 4. Store
+      return result                        # 5. Return
+
+Cache invalidation strategies:
+  TTL-based expiry (automatic)
+  Pattern deletion: redis_cache.delete_pattern("project:xyz:*")
+  Emergency clear: POST /api/cache/clear
+  Key-specific delete: redis_cache.delete(key)
+
+
+HOVER-TO-PREDICT ARCHITECTURE (Complete Flow):
+──────────────────────────────────────────────
+
+  User hovers (onMouseEnter) on project card in dashboard
+      |
+      v
+  Frontend fires: fetch(`/api/prefetch/${projectId}`)
+      |
+      v
+  Backend receives prefetch request
+      |
+      v
+  warm_all_project_caches(project_id, user_id) is called
+      |
+      +---> warm_critical_project_caches() [5 second timeout]
+      |     |-- warm_risk_profile_cache()       -> Redis -> If MISS -> Ollama -> Redis
+      |     |-- warm_synergy_score_cache()       -> Redis -> If MISS -> Ollama -> Redis
+      |     +-- warm_project_ai_summary_cache() -> Redis -> If MISS -> Ollama -> Redis
+      |
+      +---> warm_non_critical_project_caches() [no timeout, async]
+            |-- warm_project_team_cache()
+            |-- warm_vdr_documents_cache()
+            |-- warm_vdr_categories_cache()
+            |-- warm_project_alerts_cache()
+            |-- warm_project_intelligence_cache_single()
+            |-- warm_industry_insights_cache()
+            |-- warm_project_tasks_cache()
+            |-- warm_access_summary_cache()
+            |-- warm_project_ai_chats_cache()
+            |-- warm_annotated_documents_cache()
+            |-- warm_simulations_cache()
+            +-- warm_scenarios_cache()
+      |
+      v
+  By the time user CLICKS -> all data is in Redis -> instant response!
+
+
+Q162-Q165. Cache Edge Cases
+───────────────────────────
+100 project hovers: Each warm function checks Redis first, skips if cached.
+Cache stampede prevention:
+  Pre-warming: APScheduler keeps cache warm in background (every 2-5 mins)
+  Check-before-compute: warm functions check Redis before calling LLM
+  Fallback responses: Even if LLM fails, fallback data is returned
+  SmartCache has asyncio.Lock for thread safety
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 11: VDR (VIRTUAL DATA ROOM) (Q188-Q194)                            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+What is a VDR?
+──────────────
+A secure online repository for storing/sharing confidential M&A documents.
+
+Why M&A needs VDR:
+  Due diligence requires reviewing 100s-1000s of documents
+  Multiple parties need controlled access
+  Documents: financial statements, contracts, IP, HR records, litigation
+
+VDR categories: Financials, Legal & Compliance, Human Resources,
+                Intellectual Property, General
+
+Document upload flow:
+  POST /api/vdr/documents/upload
+  1. Receive multipart form: file + project_id + category
+  2. Create directory: uploads/{project_id}/
+  3. Save with UUID: {uuid}{extension}
+  4. Insert metadata into vdr_documents table
+  5. Background RAG ingestion:
+     background_tasks.add_task(rag_system.ingest_document, path, name)
+
+PDF processing: PyMuPDF (fitz) for digital PDFs
+  doc = fitz.open(file_path)
+  for page in doc: text += page.get_text()
+
+Scanned PDFs: Would need OCR (pytesseract) - not currently implemented
+Tables: PyMuPDF extracts as plain text, better tools: tabula-py, camelot
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 12: DEAL SOURCING, SYNERGY & MEMOS (Q197-Q230)                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Deal Sourcing Flow:
+  POST /api/companies/strategic_search
+  1. Parse NL query -> structured filters (revenue, location)
+  2. Query database with filters
+  3. Score each company via AI (SSE streaming)
+  4. Frontend displays scored companies in real-time
+
+Synergy Calculation (rule-based):
+  cost_synergies = ebitda * 0.12        # 12% of EBITDA
+  revenue_synergies = revenue * 0.04    # 4% of revenue
+  synergy_score = min(100, (total / revenue) * 200) + margin_bonus
+
+AI Synergy Score (RAG-driven):
+  Uses RAG to analyze VDR documents
+  Generates JSON with subScores: Financial Synergy, Strategic Fit, Risk Profile
+
+Monte Carlo Simulation:
+  iterations = 10000
+  rev_growth = np.random.normal(mean, 2.0, iterations)
+  ebitda_margin = np.random.normal(mean, 5.0, iterations)
+  Returns: Mean, Median, StdDev, 90% CI, Distribution + AI rationale
+
+
+One-Click Memo Generation:
+  GET /api/projects/{id}/generate_memo
+  1. Fetch mission_control_data
+  2. Fetch risk_profile + synergy_score in PARALLEL
+  3. Generate 6 sections in PARALLEL via asyncio.gather():
+     Executive Summary, Valuation, Synergy, Risk, Strategic, Recommendations
+  4. Each section: prompt -> Ollama -> if fail -> pre-written fallback
+  5. Assemble into professional memo JSON
+  6. Frontend renders + exports to PDF
+
+PDF Export: ReportLab (backend) + jsPDF/html2canvas/@react-pdf/renderer (frontend)
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 13: RBAC & MULTI-TENANCY (Q231-Q240)                               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Roles: Admin, Editor, Viewer
+
+Implementation:
+  Database: project_members table (id, project_id, user_id, role, invited_at)
+
+  Security Dependencies (security.py):
+    get_current_user_id()      -> Authenticates user (JWT)
+    get_project_member_auth()  -> Checks membership (any role)
+    get_project_admin_auth()   -> Checks admin role specifically
+
+  Route Protection:
+    @router.delete("/api/projects/{project_id}")
+    async def delete_project(admin_id: str = Depends(get_project_admin_auth)):
+
+Multi-tenancy: Yes, enforced via:
+  project_members join table
+  All queries scoped by project_id or user_id
+  RLS at database level
+  RAG search filtered by allowed_sources
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 14: PERFORMANCE & SCALING (Q251-Q270)                               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Biggest bottleneck: LLM inference latency (10-30s per call)
+
+Latency reduction:
+  Parallel LLM calls: asyncio.gather() fires 5+ prompts simultaneously
+  Redis caching: ~15ms vs 10-30s
+  Hover-to-predict: Pre-compute before user clicks
+  Background scheduling: APScheduler keeps caches warm (every 2-15 min)
+  Smart TTL: Heavy AI cached 30 min, market data 3 min
+  OOM fallbacks: Return fallback data if VRAM overflow
+  Frontend caching: useEnhancedCache hook with 2-minute TTL
+
+Database optimization:
+  Supabase RPC functions (no N+1 queries)
+  .limit() on all queries
+  JSONB for semi-structured data
+
+LLM optimization:
+  OLLAMA_NUM_PARALLEL=2 for batched inference
+  8-bit quantization reduces VRAM by 50%
+  Configurable timeouts (30-180s)
+  GPU inference when available
+
+Horizontal scaling:
+  FastAPI is stateless -> multiple Uvicorn workers behind load balancer
+  Redis is external -> shared across instances
+  PostgreSQL: read replicas, connection pooling (PgBouncer)
+  Vector search: FAISS -> Milvus/Qdrant for distributed search
+
+Monitoring:
+  RequestLoggingMiddleware logs every request/response
+  GET /api/cache/stats -> hit rate, miss count
+  Console logging with emoji tags
+  Redis Insight on port 5540
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 15: EDGE CASES & FAILURE SCENARIOS (Q291-Q300)                      ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Redis down:
+  All cache reads return None -> falls through to DB + LLM (slower but works)
+  Graceful degradation - no crash
+
+PostgreSQL down:
+  App non-functional (source of truth). Supabase provides managed HA.
+
+LLaMA-3 not responding:
+  httpx.RequestError caught -> "AI service unreachable" message
+  Memo generation: pre-written fallback content returned
+
+LLM request takes 60 seconds:
+  httpx timeouts configured (30-180s per endpoint)
+  Timeout expires -> exception caught -> fallback returned
+
+Two users upload same document:
+  UUID filenames: each gets unique ID, stored independently
+
+2 GB PDF upload:
+  No size limit currently enforced. Production: add nginx limit + validation
+
+Document parsing fails:
+  Exception caught, document record exists but not RAG-searchable
+
+Vector search returns irrelevant docs:
+  LLM instructed "Based ONLY on the provided context"
+  Improvement: add distance threshold filtering
+
+Question outside documents:
+  context_text = "No relevant context was found"
+  LLM instructed to say "I don't know"
+
+Permission revoked while logged in:
+  Every API call re-validates JWT + project membership
+  Next API call fails with 403. No sessions to invalidate.
+
+10,000 simultaneous AI requests:
+  Redis serves cached responses instantly (~15ms) for most users
+  Only cache MISSes trigger LLM calls
+  APScheduler pre-warms caches
+  Production: add rate limiting + horizontal scaling
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 16: RESUME DEFENSE QUESTIONS (Q305-Q310)                            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Q305. What makes evaluation structured?
+  All AI outputs produce structured JSON:
+    Risk: {"overallScore": 65, "topRisks": [...], "detailedBreakdown": [...]}
+    Synergy: {"overallScore": 72, "subScores": [...], "rationale": "..."}
+    Recommendation: {"recommendation": "BUY", "confidence": "High", ...}
+
+Q306. How is collaboration secure?
+  JWT auth, project membership checks, admin-only ops, document-level access,
+  RAG scoped to project files, team management, status change audit trail
+
+Q307. How does RBAC work?
+  project_members table + FastAPI Depends() + security.py functions
+  Three levels: authenticate -> check membership -> check admin role
+
+Q308. How did you fine-tune? (See Section 8 - detailed LoRA explanation)
+  Base: LLaMA-3.1-8B, Technique: LoRA (8-bit quantization)
+  Training: M&A instruction-response pairs
+  Post-training: merge -> GGUF -> Ollama registration
+  Evidence: ollama_factory/, synergyai_final_standalone_model/ (9 GB)
+
+Q309. Mathematics of vector similarity:
+  Cosine Similarity:
+    cos(theta) = (A dot B) / (||A|| * ||B||)
+    Range: [-1, 1], 1 = identical
+
+  Euclidean Distance (L2):
+    d(A,B) = sqrt(sum((ai - bi)^2))
+    Range: [0, infinity), 0 = identical
+
+  With normalized vectors: d^2(A,B) = 2 - 2*cos(theta)
+  Minimizing L2 distance = maximizing cosine similarity
+
+Q310. Data isolation guarantees:
+  Layer 1: JWT authentication
+  Layer 2: Project membership authorization
+  Layer 3: Query scoping (.eq('project_id', pid))
+  Layer 4: RAG scoping (allowed_sources filter)
+  Layer 5: Database RLS policies
+  Layer 6: Cache key isolation (includes user_id + project_id)
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SECTION 17: HARDEST PART                                                    ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+1. FINE-TUNING WITH LoRA:
+   Dataset preparation, LoRA config, quantization, merging adapters,
+   GGUF conversion, Ollama integration. Getting consistent JSON output
+   required extensive prompt engineering AND training data curation.
+
+2. PARALLEL LLM + OOM:
+   Running 5+ concurrent LLM calls on consumer GPU causes OOM crashes.
+   Implemented fallback chains, timeout handling, and graceful degradation.
+
+3. HOVER-TO-PREDICT ARCHITECTURE:
+   Pre-computing 15+ data points in parallel without overwhelming
+   the LLM or Redis was a complex distributed systems challenge.
+
+4. RAG ACCURACY:
+   Tuning chunk size, overlap, k values, and allowed_sources filtering
+   to prevent cross-project data leaks while maintaining retrieval quality.
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  COMPLETE DATA FLOW - END TO END                                             ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+  +──────────────────────────────────────────────────────────────────────+
+  |                        FULL REQUEST LIFECYCLE                        |
+  |                                                                      |
+  |  User clicks "Risk Analysis"                                        |
+  |      |                                                               |
+  |      v                                                               |
+  |  Next.js Frontend                                                    |
+  |  |-- useEnhancedCache -> check global Map                            |
+  |  |   |-- HIT -> render immediately                                   |
+  |  |   +-- MISS                                                        |
+  |  |-- fetch('/api/projects/{id}/risk_profile', {                      |
+  |  |       headers: { Authorization: Bearer <jwt> }                    |
+  |  |   })                                                              |
+  |  |                                                                   |
+  |  +-- CORS -> FastAPI receives request                                |
+  |             |                                                        |
+  |             v                                                        |
+  |  RequestLoggingMiddleware -> logs request                            |
+  |             |                                                        |
+  |             v                                                        |
+  |  get_current_user_id() -> validate JWT via Supabase                  |
+  |             |                                                        |
+  |             v                                                        |
+  |  @cached(request_type="ai_heavy") -> check Redis                    |
+  |  |-- HIT -> return cached JSON (15ms)                                |
+  |  +-- MISS                                                            |
+  |                                                                      |
+  |  get_project_risk_profile()                                         |
+  |  |-- Query Supabase: projects -> company_cin -> companies -> name   |
+  |  |-- RAG Search: rag_system.search("risks, liabilities...", k=10)  |
+  |  |   |-- Embed query -> 384-dim vector                              |
+  |  |   |-- FAISS search -> top-10 chunks                              |
+  |  |   +-- Return chunk content + source                              |
+  |  |-- Build prompt with RAG context                                  |
+  |  |-- POST to Ollama (localhost:11434/api/generate)                  |
+  |  |   +-- synergyai-specialist model processes prompt                |
+  |  |-- Parse JSON from LLM response (regex extraction)               |
+  |  |-- Store in Redis with TTL=600s                                   |
+  |  +-- Return JSON to frontend                                       |
+  |                                                                      |
+  |  Frontend receives JSON -> renders risk profile UI                   |
+  |  +-- Stores in useEnhancedCache global Map (TTL=120s)              |
+  +──────────────────────────────────────────────────────────────────────+
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  APPENDIX: KEY FILE REFERENCES                                               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+BACKEND:
+  backend/app/main.py              -> App entry, schedulers, prefetch
+  backend/app/core/config.py       -> Supabase + Ollama config
+  backend/app/core/security.py     -> JWT auth + RBAC
+  backend/app/core/redis_cache.py  -> Redis client
+  backend/app/core/cache_decorator.py -> @cached decorator
+  backend/app/core/cache_warmer.py -> APScheduler pre-warming
+  backend/app/core/ai_batching.py  -> Parallel AI calls
+  backend/app/routers/auth.py      -> Signup/Login (59 lines)
+  backend/app/routers/projects.py  -> Projects, tasks, teams (867 lines)
+  backend/app/routers/ai.py        -> AI endpoints (1780 lines)
+  backend/app/routers/vdr.py       -> VDR management (725 lines)
+  backend/app/routers/knowledge.py -> Knowledge library (795 lines)
+  backend/app/services/market.py   -> yfinance market data
+  backend/app/services/news.py     -> NewsAPI integration
+  backend/app/services/prompt_templates.py -> Prompts + fallbacks
+  backend/rag_pipeline.py          -> FAISS + SentenceTransformer (170 lines)
+
+FRONTEND:
+  src/app/layout.tsx               -> Root layout
+  src/app/page.tsx                 -> Landing page
+  src/app/dashboard/               -> Dashboard routes
+  src/lib/supabaseClient.ts        -> Supabase client
+  src/lib/middleware.ts             -> Auth guard middleware
+  src/hooks/useEnhancedCache.ts    -> Frontend cache hook
+  src/components/features/         -> 22 feature modules
+  src/components/ui/               -> Shadcn UI components
+
+AI/ML:
+  backend/synergyai_final_standalone_model/ -> 9 GB fine-tuned LLaMA-3.1-8B
+  backend/ollama_factory/          -> LoRA adapter files
+  backend/synergyai_index.faiss    -> FAISS vector index (~1 GB)
+  backend/synergyai_text_map.pkl   -> Chunk metadata (~376 MB)
+  backend/convert_to_gguf.py       -> GGUF conversion script
+
+INFRA:
+  docker-compose.yml               -> Redis + RedisInsight
+  .env.local                       -> Frontend env vars
+  backend/.env                     -> Backend env vars
+
+================================================================================
+                          END OF DOCUMENT
+================================================================================
