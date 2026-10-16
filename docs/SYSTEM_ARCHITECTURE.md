@@ -1,6 +1,6 @@
-# SynergyAI: System Architecture, Technical Design & SDE Interview Guide
+# SynergyAI: System Architecture & Technical Design
 
-> **Document Type:** Reverse-Engineered System Architecture & Engineering Interview Guide  
+> **Document Type:** System Architecture  
 > **Repository:** `SynergyAI`  
 > **Status:** Production-Grade Technical Blueprint (Codebase Verified)  
 > **Target Audience:** Staff/Principal Architects, Engineering Hiring Managers, M&A Tech Leads, SDE Candidates  
@@ -25,9 +25,6 @@
 15. [Deployment & Runtime Architecture](#15-deployment--runtime-architecture)
 16. [Important Architectural Decisions & Trade-Offs (ADRs)](#16-important-architectural-decisions--trade-offs-adrs)
 17. [Limitations, Technical Debt & Engineering Roadmap](#17-limitations-technical-debt--engineering-roadmap)
-18. [Interview Explanation Guide (Spoken Scripts)](#18-interview-explanation-guide-spoken-scripts)
-19. [Defensive Interview Q&A Bank (~30 Deep-Dive Technical Questions)](#19-defensive-interview-qa-bank)
-20. [Progressive Architecture Learning Checklist](#20-progressive-architecture-learning-checklist)
 
 ---
 
@@ -964,114 +961,3 @@ graph TD
 | **P2 - Medium** | Token in Query Parameter | `backend/app/core/security.py:6` | `get_current_user_id` reads token from `request.query_params.get("token")`, exposing JWTs in logs. | Enforce standard `Authorization: Bearer` headers across all client fetch calls. |
 
 ---
-
-## 18. Interview Explanation Guide (Spoken Scripts)
-
-### A. 30-Second Project Summary
-> *"SynergyAI is a full-stack, enterprise-grade M&A deal sourcing and intelligence platform designed to automate due diligence and investment memo generation. I built it with a Next.js 15 frontend, a FastAPI backend, and an entirely local AI stack utilizing Ollama and FAISS. Because M&A deals involve confidential, non-public data, all vector search and LLM inference run strictly within the infrastructure boundary. To mask local LLM latency, I designed a multi-tier 'hover-to-predict' caching architecture using Redis and APScheduler, turning 15-second multi-prompt generations into sub-50ms cache hits."*
-
-### B. 2-Minute Architecture Explanation
-> *"When designing SynergyAI, I focused on solving two massive engineering challenges in applied AI: **data privacy** and **inference latency**.
-> 
-> On the data privacy side, investment bankers cannot feed confidential target filings into public cloud APIs. I architected an isolated pipeline where documents uploaded to our Virtual Data Room are parsed using PyMuPDF, chunked into 400-word windows with 50-word overlaps, embedded using `bge-small-en-v1.5`, and indexed into FAISS. During Q&A, retrieval is cryptographically isolated by project membership before a local LLaMA-3.1 model synthesizes the answer.
-> 
-> On the performance side, generating an institutional investment memo requires six distinct analytical sections—valuation, synergies, risks, and strategic rationale. Firing six sequential LLM calls locally would take over a minute. I solved this by:
-> 1. Running concurrent prompt pipelines using `asyncio.gather()`.
-> 2. Engineering deterministic fallback templates that instantly recover if the local GPU throttles.
-> 3. Designing a 'hover-to-predict' cache warmer: when an analyst hovers over a deal card, our frontend triggers a prefetch ping that pre-computes and caches the analytics in Redis. By the time they click, the dashboard renders in under 50 milliseconds."*
-
-### C. 5-to-10-Minute Deep Architecture Walkthrough
-
-```
-[Interview Board Drawing Guide]
-1. Left: Browser (Next.js 15 App Router + useEnhancedCache Hook)
-2. Center Top: FastAPI Gateway (RequestLoggingMiddleware + JWT/RBAC Auth)
-3. Center Middle: Core Domain Services (RAG Pipeline + SmartCache + Valuation Engine)
-4. Center Bottom: Storage Layers (Redis 7.2 Cache + Supabase PostgreSQL + Local Files)
-5. Right: Inference Boundary (Ollama Localhost Server + FAISS Vector Store)
-```
-
-**Step-by-Step Spoken Delivery:**
-1. **The Entry & Authentication Flow:**
-   * *"Requests hit FastAPI through Starlette middleware. Authentication uses Supabase JWTs validated in `security.py`. For project-level access, I implemented an RBAC dependency that queries our `project_members` table, enforcing Admin, Editor, or Viewer privileges before hitting business logic."*
-2. **The Scoped RAG Pipeline:**
-   * *"For the VDR, we needed semantic search that guarantees tenant isolation. When a document is uploaded, FastAPI streams it to disk and launches an asynchronous background ingestion task. It chunks the document, embeds it via SentenceTransformers, and locks our FAISS index. When querying, we query Supabase for all document IDs belonging to that project, retrieve candidate vectors from FAISS, and filter strictly against authorized document sources before passing context to the LLM."*
-3. **The Multi-Prompt Concurrency Pattern:**
-   * *"Our One-Click Investment Memo generator demonstrates asynchronous concurrency. It first gathers quantitative risk metrics and synergy scores in parallel. Then it builds a standardized context payload and fires six simultaneous HTTP requests to Ollama via `asyncio.gather()`. If any generation fails or returns empty strings, my fallback layer catches the exception and injects a deterministic institutional narrative, ensuring the user always receives a functional memo."*
-4. **The Quantitative Valuation Engine:**
-   * *"Unlike simple chatbots, SynergyAI handles real quantitative modeling. In `/simulations/run`, we run a 10,000-iteration Monte Carlo DCF model using NumPy vectorized distributions for revenue growth, EBITDA margin, and WACC. We calculate exact P5, Median, Mean, and P95 valuation thresholds, and feed those statistical distributions back to the LLM to generate data-driven commentary for the investment committee."*
-5. **Trade-Offs & Scaling:**
-   * *"If I were redesigning this for a multi-tenant cloud deployment, my first step would be moving FAISS into `pgvector` inside PostgreSQL. That would allow us to enforce tenant filtering at index lookup time rather than post-filtering candidate vectors, while eliminating the disk-based index serialization bottleneck."*
-
----
-
-## 19. Defensive Interview Q&A Bank
-
-#### Q1: Why did you choose FAISS over managed vector databases like Pinecone or Qdrant?
-* **Answer:** *"Three reasons: privacy, latency, and cost. M&A data cannot leave our self-hosted perimeter, eliminating cloud-hosted vector solutions like Pinecone. FAISS runs directly in-process in Python RAM, giving us sub-5ms vector distance lookups without network serialization overhead. However, the trade-off is that FAISS doesn't support metadata filtering natively in its flat index, which is why we retrieve a candidate set and post-filter by source document."*
-
-#### Q2: How does your system prevent Out-Of-Memory (OOM) errors when multiple LLM calls fire concurrently?
-* **Answer:** *"In `backend/app/core/ai_batching.py`, we implement an `AIBatchProcessor` with a fixed `ThreadPoolExecutor(max_workers=4)` and a batch size of 5. Furthermore, all prompt endpoints in `backend/app/routers/ai.py` wrap LLM generation in try-except blocks that fall back to deterministic rule-based template functions in `prompt_templates.py`. If the GPU runs out of VRAM or Ollama returns a 500 status code, the application catches it instantly and returns a valid analytical report."*
-
-#### Q3: What is the 'Hover-to-Predict' mechanism and how does it prevent cache stampedes?
-* **Answer:** *"When a user hovers over a deal card, Next.js detects `onMouseEnter` and pings `POST /api/projects/{id}/prefetch`. The backend checks Redis first; if it's a cache miss, it kicks off a background task to pre-compute the mission control analytics and synergy scores. To prevent cache stampedes (dog-piling), our `@cached` decorator calculates deterministic keys and locks execution so that concurrent hover events do not spawn duplicate LLM tasks."*
-
-#### Q4: How is Role-Based Access Control (RBAC) enforced across projects?
-* **Answer:** *"We use FastAPI dependency injection. Every protected route declares `user_id: str = Depends(get_project_member_auth)`. In `backend/app/core/security.py`, this dependency extracts the JWT, verifies the user's identity, and then executes a query against Supabase: `SELECT role FROM project_members WHERE project_id = :p_id AND user_id = :u_id`. If the record is missing, it aborts with HTTP 403 Forbidden. For destructive actions like deleting a project, we inject `get_project_admin_auth` which explicitly verifies `role == 'Admin'`."*
-
-#### Q5: How did you implement real-time streaming in the Strategic Sourcing Engine?
-* **Answer:** *"In `backend/app/routers/ai.py:133-225`, the `/api/companies/strategic_search` endpoint returns a FastAPI `StreamingResponse` with media type `text/event-stream`. We query candidate companies from PostgreSQL using regex-extracted filters, then create asynchronous tasks for each candidate. Using `asyncio.as_completed(tasks)`, the backend streams each company's strategic fit score to the frontend as soon as its individual LLM scoring call finishes, allowing the UI to render results progressively without waiting for the full batch to complete."*
-
-#### Q6: What happens if the Redis cache server crashes? Does the entire system go down?
-* **Answer:** *"No. In `backend/app/core/redis_cache.py`, the `RedisCache` class wraps every Redis operation (`get`, `set`, `delete`) in try-except blocks. If Redis disconnects, `self.redis_client` logs a warning and returns `None`. When `@cached` receives `None` from the cache layer, it simply proceeds to execute the underlying database query or LLM call directly, ensuring graceful degradation."*
-
-#### Q7: Why do you halve the cache TTL during business hours?
-* **Answer:** *"In `backend/app/core/cache_decorator.py:33-36`, `SmartCache.calculate_ttl()` checks the local hour. If the request occurs between 09:00 and 17:00, we apply a 0.5 multiplier to TTLs. During active trading and market hours, stock indices, corporate filings, and news alerts change rapidly, requiring fresher data. Outside business hours, we preserve cache keys longer to reduce unnecessary server load."*
-
-#### Q8: How does the Monte Carlo simulation calculate valuation ranges?
-* **Answer:** *"In `backend/app/routers/ai.py:603-643`, we pull user-defined assumptions (growth rate, EBITDA margin, discount rate) and use NumPy to generate 10,000 normal random variations. We vectorize terminal cash flow and discount rate calculations, compute the terminal enterprise value array, and extract statistical percentiles: P5, Median, Mean, and P95. We then pass these exact figures to Ollama with a quantitative prompt to summarize the valuation range for an investment committee."*
-
-#### Q9: How are VDR document annotations managed across multiple users?
-* **Answer:** *"In `backend/app/routers/vdr.py:422-640`, annotations are stored in the `document_annotations` table with document ID, page number, coordinates (x, y), highlighted text snippet, and author ID. We support threaded replies and resolution states (`resolved: boolean`). When a document is loaded, we query both total annotations and unresolved annotations, and return author profile metadata so team members can conduct collaborative diligence."*
-
-#### Q10: What is the difference between `/api/vdr/documents` and `/api/knowledge/documents`?
-* **Answer:** *"`/api/vdr/documents` manages project-specific Virtual Data Rooms scoped to authorized team members collaborating on a specific M&A deal. `/api/knowledge/documents` is a user-level global knowledge library where an individual analyst can store their private research, cross-deal benchmarks, and personal notes without exposing them to project teammates."*
-
----
-
-## 20. Progressive Architecture Learning Checklist
-
-### Stage 1: System Overview & High-Level Design (HLD)
-* [ ] Explain the core business problem: why M&A due diligence demands local AI and strict data isolation.
-* [ ] Draw the System Context diagram from memory (Browser -> Next.js -> FastAPI -> Redis / Ollama / FAISS / Supabase).
-* [ ] Describe the responsibilities of each layer (Presentation, Gateway, Controllers, Services, Storage, Inference).
-* [ ] *Self-Test without notes:* Be able to give the **30-Second Project Summary** fluently.
-
-### Stage 2: Request Flows & Sequence Workflows
-* [ ] Trace the One-Click Investment Memo request flow from button click to PDF export.
-* [ ] Explain the 6 concurrent LLM tasks executed under `asyncio.gather()`.
-* [ ] Trace the VDR document upload flow: file persistence, chunking, embedding, and FAISS disk sync.
-* [ ] *Self-Test without notes:* Sketch the Sequence Diagram for **VDR Scoped Q&A** on a whiteboard.
-
-### Stage 3: API Contracts & Database Schema
-* [ ] Enumerate the primary Supabase tables (`projects`, `vdr_documents`, `document_annotations`, `companies`, `events`, `users`).
-* [ ] Explain the role of Supabase stored procedures (RPCs) in multi-table transactions like project creation.
-* [ ] Detail the request/response contract for `/api/companies/strategic_search` and how SSE streaming works.
-* [ ] *Self-Test without notes:* List the HTTP method, endpoint path, and auth requirements for the 5 most important AI routes.
-
-### Stage 4: Low-Level Design (LLD) & Algorithms
-* [ ] Explain the mathematical formulas used in the Monte Carlo valuation engine (`numpy.random.normal`).
-* [ ] Walk through the Risk Score and Synergy Score formulas step-by-step.
-* [ ] Explain how the `@cached` decorator calculates deterministic keys and dynamically adjusts TTL during business hours.
-* [ ] *Self-Test without notes:* Explain how PyMuPDF chunking (400 words / 50 overlap) feeds into SentenceTransformers.
-
-### Stage 5: Security, Scalability & Trade-Off Defenses
-* [ ] Defend why local Ollama was chosen over OpenAI APIs in an institutional finance environment.
-* [ ] Identify the top 3 architectural bottlenecks in the current codebase (FAISS post-filtering, local storage, single GPU).
-* [ ] Articulate the migration path to `pgvector` and Celery queues for cloud multi-tenancy.
-* [ ] *Self-Test without notes:* Answer **Interview Questions Q1, Q2, and Q3** defensively with code citations.
-
-### Stage 6: The Full Interview Simulation
-* [ ] Deliver the **2-Minute Architecture Pitch** with confidence, pacing, and professional technical terminology.
-* [ ] Conduct the **5-to-10-Minute Deep Walkthrough**, guiding the interviewer through the components, data flows, and design trade-offs.
-* [ ] Defend the project against aggressive interviewer probing regarding reliability, security vulnerabilities, and cache invalidation.

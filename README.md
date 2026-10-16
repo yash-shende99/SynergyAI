@@ -442,7 +442,7 @@ SynergyAI/
 │           └── prompt_templates.py      Prompts + fallback generators
 │
 ├── 📁 docs/
-│   └── SYSTEM_ARCHITECTURE_AND_INTERVIEW_GUIDE.md
+│   └── SYSTEM_ARCHITECTURE.md                  System architecture & design specification
 │
 ├── 📁 public/
 │   ├── synergy-logo.png
