@@ -24,11 +24,13 @@
 .DS_Store
 *.pem
 
-# debug
+# debug & logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*.log
+backend/requests.log
 
 # env files (can opt-in for committing if needed)
 .env*
@@ -39,6 +41,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# backend binaries, models and vector caches
 backend/synergyai_final_standalone_model/
 backend/synergyai_index.faiss
 backend/synergyai_text_map.pkl
