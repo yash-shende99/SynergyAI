@@ -3,7 +3,7 @@ import { FileText, Newspaper, Database, Share2 } from 'lucide-react';
 import {Button} from '../../../ui/button';
 
 export interface Snippet {
-  type: 'VDR Doc' | 'SEBI Filing' | 'News';
+  type: 'VDR Doc' | 'SEBI Filing' | 'News' | 'Global DB';
   source: string;
   content: string;
 }
