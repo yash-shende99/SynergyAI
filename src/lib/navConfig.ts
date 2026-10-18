@@ -9,8 +9,7 @@ export const globalNavItems: NavItem[] = [
   { id: 'sourcing', name: 'Deal Sourcing', href: '/dashboard/sourcing', icon: Search },
   { id: 'chat', name: 'Global AI Co-Pilot', href: '/dashboard/chat', icon: MessageCircle },
   { id: 'notes', name: 'Journal', href: '/dashboard/notes', icon: BookOpen },
-  { id: 'library', name: 'Knowledge Library', href: '/dashboard/knowledge-library', icon: BookOpen },
-  { id: 'team-chat', name: 'Team Chat', href: '/dashboard/team-chat', icon: Users }
+  { id: 'library', name: 'Knowledge Library', href: '/dashboard/knowledge-library', icon: BookOpen }
 ];
 
 // Update projectNavItems to have proper base paths
@@ -22,7 +21,8 @@ export const projectNavItems: NavItem[] = [
   { id: 'analytics', name: 'Analytics & Risk', href: '/analytics', icon: BarChart },
   { id: 'valuation', name: 'Valuation', href: '/valuation/scenarios', icon: Calculator },
   { id: 'reports', name: 'Reports', href: '/reports', icon: FileText },
-  { id: 'team', name: 'Team & Permissions', href: '/team', icon: Users }
+  { id: 'team', name: 'Team & Permissions', href: '/team', icon: Users },
+  { id: 'team-chat', name: 'Team Chat', href: '/team-chat', icon: MessageCircle }
 ];
 
 // --- DEFINITIVE HORIZONTAL FEATURE HEADERS ---
@@ -233,6 +233,7 @@ export const findProjectActiveFeature = (pathname: string, projectId: string) =>
     '/valuation': 'valuation',
     '/reports': 'reports',
     '/team': 'team',
+    '/team-chat': 'team-chat',
     '/project-notifications': 'project-notifications',
     '/project-settings': 'project-settings'
   };
