@@ -121,19 +121,19 @@ class RAGSystem:
                 print(f"[WARN] No text extracted from {source_name}")
                 return
 
-            # Simple chunking by words
-            words = text.split()
-            chunk_size = 400
-            overlap = 50
+            # Sliding-window character chunking: 500 characters with 100 character overlap
+            # Isolates discrete legal covenants (~80-100 tokens) with semantic continuity
+            chunk_size = 500
+            overlap = 100
             chunks = []
             
-            i = 0
-            while i < len(words):
-                chunk_words = words[i:i + chunk_size]
-                chunk_text = " ".join(chunk_words)
-                if chunk_text.strip():
-                    chunks.append(chunk_text)
-                i += chunk_size - overlap
+            start = 0
+            while start < len(text):
+                end = start + chunk_size
+                chunk = text[start:end].strip()
+                if chunk:
+                    chunks.append(chunk)
+                start += (chunk_size - overlap)
 
             if not chunks:
                 return
