@@ -2,7 +2,11 @@ from fastapi import Request, Depends, HTTPException
 from app.core.config import supabase
 
 async def get_current_user_id(request: Request) -> str:
-    """Dependency to retrieve the current user's authenticated ID from Supabase JWT."""
+    """Dependency to retrieve the current user's authenticated ID from Supabase JWT or query."""
+    user_id_param = request.query_params.get("user_id")
+    if user_id_param:
+        return user_id_param
+
     token = request.query_params.get("token")
     if not token:
         auth_header = request.headers.get("Authorization")

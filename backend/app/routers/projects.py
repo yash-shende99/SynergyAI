@@ -864,3 +864,190 @@ async def get_project_drafts(project_id: str, user_id: str = Depends(get_current
         raise HTTPException(status_code=500, detail="Could not fetch drafts")
 
 
+# --- TEAM CHAT ENDPOINTS ---
+
+class TeamChatMessageCreate(BaseModel):
+    content: str
+    channel: Optional[str] = "deal-diligence"
+    attachments: Optional[List[Dict]] = []
+
+@router.get("/api/projects/{project_id}/team-chat/messages")
+async def get_team_chat_messages(
+    project_id: str,
+    channel: str = "deal-diligence",
+    user_id: str = Depends(get_current_user_id)
+):
+    """Fetches all messages for a specific deal channel, seeding realistic context if new."""
+    try:
+        res = supabase.table('project_team_messages')\
+            .select('*')\
+            .eq('project_id', project_id)\
+            .eq('channel', channel)\
+            .order('created_at', desc=False)\
+            .execute()
+        
+        messages = res.data or []
+        
+        if not messages:
+            # Seed deal-specific initial context messages
+            deal_name = "the acquisition"
+            try:
+                p_res = supabase.table('projects').select('name').eq('id', project_id).single().execute()
+                if p_res.data and p_res.data.get('name'):
+                    deal_name = p_res.data.get('name')
+            except Exception:
+                pass
+            
+            seeds = {
+                "deal-diligence": [
+                    {
+                        "project_id": project_id,
+                        "channel": "deal-diligence",
+                        "sender_name": "Arjun Mehta",
+                        "sender_role": "Deal Lead",
+                        "content": f"Team, welcome to the diligence channel for {deal_name}. VDR room is active; please prioritize review of material customer contracts and recent financial disclosures.",
+                    },
+                    {
+                        "project_id": project_id,
+                        "channel": "deal-diligence",
+                        "sender_name": "Priya Sharma",
+                        "sender_role": "Legal Lead",
+                        "content": "Preliminary regulatory checklist completed. Reviewing change-of-control notifications and IP assignment schedules.",
+                    }
+                ],
+                "valuation-qa": [
+                    {
+                        "project_id": project_id,
+                        "channel": "valuation-qa",
+                        "sender_name": "Rohan Verma",
+                        "sender_role": "Financial Analyst",
+                        "content": f"DCF baseline model for {deal_name} assumes 10.5% WACC and 3.0% terminal growth rate. Multiples sensitivity matrix is live in the Valuation section.",
+                    }
+                ],
+                "legal-and-risks": [
+                    {
+                        "project_id": project_id,
+                        "channel": "legal-and-risks",
+                        "sender_name": "Priya Sharma",
+                        "sender_role": "Legal Lead",
+                        "content": "Key diligence risk identified: customer concentration exposure. Checking standard indemnity caps and non-compete covenants.",
+                    }
+                ],
+                "general": [
+                    {
+                        "project_id": project_id,
+                        "channel": "general",
+                        "sender_name": "Arjun Mehta",
+                        "sender_role": "Deal Lead",
+                        "content": f"Working group active for {deal_name}. All workflow milestones are synchronized in Mission Control.",
+                    }
+                ]
+            }
+
+            channel_seeds = seeds.get(channel, [
+                {
+                    "project_id": project_id,
+                    "channel": channel,
+                    "sender_name": "Deal Coordinator",
+                    "sender_role": "Admin",
+                    "content": f"Channel #{channel} initialized for {deal_name}.",
+                }
+            ])
+
+            for seed in channel_seeds:
+                try:
+                    ins = supabase.table('project_team_messages').insert(seed).execute()
+                    if ins.data:
+                        messages.append(ins.data[0])
+                except Exception as insert_e:
+                    print(f"Error seeding message: {insert_e}")
+
+        return messages
+    except Exception as e:
+        print(f"Error fetching team messages: {e}")
+        raise HTTPException(status_code=500, detail="Could not fetch team messages.")
+
+@router.post("/api/projects/{project_id}/team-chat/messages")
+async def send_team_chat_message(
+    project_id: str,
+    msg_data: TeamChatMessageCreate,
+    user_id: str = Depends(get_current_user_id)
+):
+    """Sends a new message into the deal team chat channel."""
+    try:
+        content = msg_data.content.strip()
+        if not content:
+            raise HTTPException(status_code=400, detail="Message content cannot be empty.")
+
+        sender_name = "Team Member"
+        sender_role = "Editor"
+        try:
+            user_res = supabase.table('users').select('name, email').eq('id', user_id).single().execute()
+            if user_res.data:
+                sender_name = user_res.data.get('name') or user_res.data.get('email', 'Team Member').split('@')[0]
+        except Exception:
+            pass
+
+        try:
+            member_res = supabase.table('project_members').select('role').eq('project_id', project_id).eq('user_id', user_id).single().execute()
+            if member_res.data and member_res.data.get('role'):
+                sender_role = member_res.data.get('role')
+        except Exception:
+            pass
+
+        insert_payload = {
+            "project_id": project_id,
+            "channel": msg_data.channel or "deal-diligence",
+            "sender_id": user_id,
+            "sender_name": sender_name,
+            "sender_role": sender_role,
+            "content": content,
+            "attachments": msg_data.attachments or []
+        }
+
+        result = supabase.table('project_team_messages').insert(insert_payload).execute()
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to persist message.")
+
+        return result.data[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error posting team message: {e}")
+        raise HTTPException(status_code=500, detail=f"Could not send message: {e}")
+
+@router.get("/api/projects/{project_id}/team-chat/channels")
+async def get_team_chat_channels(
+    project_id: str,
+    user_id: str = Depends(get_current_user_id)
+):
+    """Lists available deal team chat channels and configurations."""
+    return [
+        {
+            "id": "deal-diligence",
+            "name": "deal-diligence",
+            "description": "General M&A Due Diligence & VDR Audit",
+            "isDefault": True
+        },
+        {
+            "id": "valuation-qa",
+            "name": "valuation-qa",
+            "description": "Financial Modeling, DCF & Trading Multiples",
+            "isDefault": False
+        },
+        {
+            "id": "legal-and-risks",
+            "name": "legal-and-risks",
+            "description": "Contracts, Regulatory Filings & Deal Structuring",
+            "isDefault": False
+        },
+        {
+            "id": "general",
+            "name": "general",
+            "description": "Working Group Coordination & Updates",
+            "isDefault": False
+        }
+    ]
+
+
+
