@@ -17,15 +17,9 @@ class CacheWarmer:
         self._lock = asyncio.Lock()
     
     async def get_active_users(self) -> List[str]:
-        """Get recently active users"""
+        """Get active users for cache warming"""
         try:
-            # Get users who logged in within last 2 hours
-            cutoff = (datetime.utcnow() - timedelta(hours=2)).isoformat()
-            result = supabase.table('users')\
-                .select('id')\
-                .gte('last_login', cutoff)\
-                .limit(20)\
-                .execute()
+            result = supabase.table('users').select('id').limit(20).execute()
             return [u['id'] for u in result.data]
         except Exception as e:
             print(f"Error getting active users: {e}")

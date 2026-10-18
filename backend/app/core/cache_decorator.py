@@ -102,8 +102,15 @@ def cached(ttl: Optional[int] = None, request_type: str = "ai_heavy", cache_null
             # Execute function
             result = await func(*args, **kwargs)
             
-            # Cache result if not None
-            if result is not None or cache_null:
+            # Do not cache error fallbacks or failed analyses
+            is_error_response = False
+            if isinstance(result, dict):
+                rationale = str(result.get('rationale', ''))
+                if 'Unable to generate' in rationale or 'service error' in str(result):
+                    is_error_response = True
+
+            # Cache result if not None and not an error response
+            if (result is not None and not is_error_response) or cache_null:
                 actual_ttl = ttl or smart_cache.calculate_ttl(
                     request_type,
                     complexity="heavy" if "ai" in request_type else "medium"
