@@ -19,6 +19,13 @@ export function useEnhancedCache<T>(
   const [error, setError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // Keep references to fetchFunction and onError to avoid recreation loops
+  const fetchFunctionRef = useRef(fetchFunction);
+  fetchFunctionRef.current = fetchFunction;
+
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+
   const loadData = useCallback(async (forceRefresh = false) => {
     if (!enabled) return;
 
@@ -45,7 +52,7 @@ export function useEnhancedCache<T>(
     abortControllerRef.current = new AbortController();
 
     try {
-      const result = await fetchFunction();
+      const result = await fetchFunctionRef.current();
       setData(result);
       
       // Cache the result
@@ -64,12 +71,12 @@ export function useEnhancedCache<T>(
       
       const errorMsg = err instanceof Error ? err.message : 'Failed to fetch data';
       setError(errorMsg);
-      onError?.(err);
+      onErrorRef.current?.(err);
     } finally {
       setLoading(false);
       abortControllerRef.current = null;
     }
-  }, [key, fetchFunction, ttl, enabled, onError]);
+  }, [key, ttl, enabled]);
 
   useEffect(() => {
     loadData();

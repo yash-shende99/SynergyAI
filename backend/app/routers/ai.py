@@ -1743,37 +1743,67 @@ async def remove_company_from_watchlist(watchlist_id: str, company_cin: str, use
 
 @router.get("/api/companies/market_map")
 def get_market_map_data(
-    sector: Optional[str] = Query(None), hq_state: Optional[str] = Query(None),
-    revenue_min: Optional[int] = Query(None), growth_min: Optional[float] = Query(None),
-    ebitda_margin_min: Optional[float] = Query(None), roe_min: Optional[float] = Query(None)
+    sector: Optional[str] = Query(None),
+    hqState: Optional[str] = Query(None),
+    hq_state: Optional[str] = Query(None),
+    revenueMin: Optional[int] = Query(None),
+    revenue_min: Optional[int] = Query(None),
+    growthMin: Optional[float] = Query(None),
+    growth_min: Optional[float] = Query(None),
+    ebitdaMarginMin: Optional[float] = Query(None),
+    ebitda_margin_min: Optional[float] = Query(None),
+    roeMin: Optional[float] = Query(None),
+    roe_min: Optional[float] = Query(None)
 ):
     try:
-        query = supabase.table('companies').select('cin, name, logo_url, industry, financial_summary')
+        # Resolve aliases between camelCase and snake_case
+        state_filter = hqState or hq_state
+        rev_filter = revenueMin if revenueMin is not None else revenue_min
+        growth_filter = growthMin if growthMin is not None else growth_min
+        ebitda_filter = ebitdaMarginMin if ebitdaMarginMin is not None else ebitda_margin_min
+        roe_filter = roeMin if roeMin is not None else roe_min
+
+        query = supabase.table('companies').select('cin, name, logo_url, industry, financial_summary, location')
         if sector and sector != 'All':
             query = query.eq('industry->>sector', sector)
-        if hq_state and hq_state != 'All':
-            query = query.ilike('location->>headquarters', f'%, {hq_state}')
-        if revenue_min is not None:
-            query = query.gte('financial_summary->>revenue_cr', revenue_min)
-        if growth_min is not None:
-            query = query.gte('financial_summary->>growth_rate_pct', growth_min)
-        if ebitda_margin_min is not None:
-            query = query.gte('financial_summary->>ebitda_margin_pct', ebitda_margin_min)
-        if roe_min is not None:
-            query = query.gte('financial_summary->>roe_pct', roe_min)
+        if state_filter and state_filter != 'All':
+            query = query.ilike('location->>headquarters', f'%, {state_filter}')
+        if rev_filter is not None and rev_filter > 0:
+            query = query.gte('financial_summary->>revenue_cr', rev_filter)
+        if growth_filter is not None and growth_filter > 0:
+            query = query.gte('financial_summary->>growth_rate_pct', growth_filter)
+        if ebitda_filter is not None and ebitda_filter > 0:
+            query = query.gte('financial_summary->>ebitda_margin_pct', ebitda_filter)
+        if roe_filter is not None and roe_filter > 0:
+            query = query.gte('financial_summary->>roe_pct', roe_filter)
 
-        result = query.limit(100).execute()
+        result = query.limit(200).execute()
         map_data = []
-        for company in result.data:
-            fs = company.get('financial_summary', {})
-            ind = company.get('industry', {})
-            if all([fs, ind, fs.get('revenue_cr'), fs.get('growth_rate_pct'), fs.get('employee_count'), ind.get('sector')]):
-                map_data.append({
-                    'cin': company['cin'], 'name': company['name'], 'logoUrl': company.get('logo_url'),
-                    'sector': ind.get('sector'), 'revenue': float(fs.get('revenue_cr', 0)),
-                    'growth': float(fs.get('growth_rate_pct', 0)), 'employees': int(fs.get('employee_count', 0)),
-                    'ebitdaMargin': float(fs.get('ebitda_margin_pct', 0)), 'roe': float(fs.get('roe_pct', 0))
-                })
+        for company in result.data or []:
+            fs = company.get('financial_summary') or {}
+            ind = company.get('industry') or {}
+            
+            rev = fs.get('revenue_cr')
+            growth = fs.get('growth_rate_pct')
+            emp = fs.get('employee_count')
+            sec = ind.get('sector')
+            
+            if rev is not None and growth is not None and emp is not None and sec:
+                try:
+                    map_data.append({
+                        'cin': company.get('cin', ''),
+                        'name': company.get('name', 'Unknown Company'),
+                        'logoUrl': company.get('logo_url'),
+                        'sector': sec,
+                        'revenue': float(rev or 0),
+                        'growth': float(growth or 0),
+                        'employees': int(emp or 0),
+                        'ebitdaMargin': float(fs.get('ebitda_margin_pct') or 0),
+                        'roe': float(fs.get('roe_pct') or 0)
+                    })
+                except (ValueError, TypeError):
+                    continue
         return map_data
-    except Exception:
+    except Exception as e:
+        print(f"Error in market_map: {e}")
         raise HTTPException(status_code=500, detail="Could not fetch market map data.")

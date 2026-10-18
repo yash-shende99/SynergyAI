@@ -8,14 +8,18 @@ from datetime import datetime
 from app.core.redis_cache import redis_cache
 
 class SmartCache:
-    """Intelligent caching with automatic TTL adjustment"""
+    """Intelligent caching with automatic TTL adjustment and hybrid store"""
     
     def __init__(self):
         self.redis = redis_cache
-        self.memory_cache = {}
         self.hit_count = 0
         self.miss_count = 0
         self._lock = asyncio.Lock()
+
+    @property
+    def memory_cache(self):
+        """Underlying in-memory store reference"""
+        return self.redis.memory_store
     
     def calculate_ttl(self, request_type: str, complexity: str = "medium") -> int:
         """Smart TTL calculation based on data type"""
@@ -46,12 +50,22 @@ class SmartCache:
         if 'project_id' in kwargs:
             key_parts.append(f"project:{kwargs['project_id']}")
         
-        # Add request parameters
-        for arg_name, arg_value in kwargs.items():
-            if arg_name not in ['user_id', 'project_id']:
-                key_parts.append(f"{arg_name}:{arg_value}")
+        # Add request parameters (excluding non-cacheable internal objects)
+        excluded = {'user_id', 'project_id', 'request', 'response', 'db', 'background_tasks', 'current_user'}
+        for arg_name, arg_value in sorted(kwargs.items()):
+            if arg_name not in excluded and arg_value is not None:
+                # Avoid non-serializable objects
+                val_str = str(arg_value)
+                if "<" not in val_str and "object at 0x" not in val_str:
+                    key_parts.append(f"{arg_name}:{val_str}")
         
-        # Hash long keys to keep Redis keys manageable
+        for arg in args:
+            if arg is not None:
+                val_str = str(arg)
+                if "<" not in val_str and "object at 0x" not in val_str:
+                    key_parts.append(val_str)
+        
+        # Hash long keys to keep cache keys manageable
         raw_key = ":".join(str(p) for p in key_parts)
         if len(raw_key) > 200:
             hash_obj = hashlib.sha256(raw_key.encode())
@@ -63,31 +77,19 @@ smart_cache = SmartCache()
 
 def cached(ttl: Optional[int] = None, request_type: str = "ai_heavy", cache_null=False):
     """
-    Enterprise-grade cache decorator with automatic TTL
-    
-    Usage:
-        @cached(request_type="ai_heavy")
-        async def expensive_function(user_id, project_id):
-            ...
-    
-        @cached(ttl=60, request_type="market")  # Force 60 second TTL
-        async def market_data():
-            ...
+    Enterprise-grade cache decorator with automatic TTL and hybrid L1/L2 backing
     """
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            # Extract user_id and project_id from kwargs
-            user_id = kwargs.get('user_id')
-            project_id = kwargs.get('project_id')
-            
             # Generate cache key
             cache_key = smart_cache.generate_key(
                 f"{func.__module__}:{func.__name__}",
+                *args,
                 **kwargs
             )
             
-            # Check cache
+            # Check cache (hits L1 in-memory TTL first, then L2 Redis)
             cached_result = await smart_cache.redis.get(cache_key)
             if cached_result is not None:
                 smart_cache.hit_count += 1

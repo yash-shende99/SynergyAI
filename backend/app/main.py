@@ -790,11 +790,14 @@ async def warm_user_cache_manually(user_id: str, admin_key: str):
 @app.get("/api/cache/stats")
 async def cache_stats():
     """Get cache performance metrics"""
+    is_redis = await redis_cache.ping()
     return {
         "hits": smart_cache.hit_count,
         "misses": smart_cache.miss_count,
         "hit_rate": f"{smart_cache.hit_count / max(1, (smart_cache.hit_count + smart_cache.miss_count)) * 100:.1f}%",
-        "redis_connected": bool(redis_cache.redis_client)
+        "redis_connected": is_redis,
+        "memory_cached_keys": len(redis_cache.memory_store),
+        "status": "Healthy (Hybrid L1 Memory + L2 Redis)" if is_redis else "Healthy (L1 In-Memory TTL Active)"
     }
 
 @app.post("/api/cache/clear")
